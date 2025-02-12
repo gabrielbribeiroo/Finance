@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaxCalcBR</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="main-container">
+        <div class="header">
+            <h1>TaxCalcBR: Simulador de Pagamento</h1>
+        </div>
+        <div class="form-container">
+            <form id="form-simulador">
+                <div class="form-group">
+                    <label for="opcao">Escolha a comparação:</label>
+                    <select id="opcao">
+                        <option value="0">Selecione...</option>
+                        <option value="1">Rendimento x Parcelas</option>
+                        <option value="2">À vista x Parcelas</option>
+                    </select>
+                </div>
+                <div id="input-container">
+                    <!-- Inputs dinâmicos serão carregados aqui -->
+                </div>
+                <button type="button" id="calcular">Calcular</button>
+            </form>
+        </div>
+        <div id="resultado" class="resultado"></div>
+    </div>
+    <footer class="footer">
+        <p>Desenvolvido por Gabriel Ribeiro | &copy; 2025</p>
+        <div>
+            <a href="https://www.github.com/gabrielbribeiroo/" target="_blank"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/github/github-original.svg" alt="GitHub" width="30" height="30"></a>
+            <a href="mailto:gabrielbroliveira@gmail.com"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/google/google-original.svg" alt="Gmail" width="30" height="30"></a>
+            <a href="https://www.instagram.com/gabrielbribeiroo/" target="_blank"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png" alt="Instagram" style="width: 32px; height: 32px;"></a>
+            <a href="https://www.linkedin.com/in/gabriel-ribeiro1000/" target="_blank"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/linkedin/linkedin-original.svg" alt="LinkedIn" width="30" height="30"></a>
+        </div>
+    </footer>
+    <script src="script.js"></script>
+</body>
+</html>
