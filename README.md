@@ -55,7 +55,7 @@ By automating the retrieval and calculation of crucial rates, TaxCalcBR empowers
 - **Install dependencies**: Ensure you have Python/Jupyter installed.
 - **Run the script**: Execute the main script (```finances.ipynb```) to fetch SELIC data and perform calculations.
 - **Run the web interface**:
-  1. Open the ```https://tax-calc-br.vercel.app/``` file in a web browser.
+  1. Open the ```finance-three-murex.vercel.app``` file in a web browser.
   2. Enter the required inputs into the form.
   3. Click "Calcular" to view the results.
 - **Interpret the output**: View calculated financial planning and analysis results.
