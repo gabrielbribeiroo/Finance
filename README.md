@@ -59,3 +59,6 @@ By automating the retrieval and calculation of crucial rates, TaxCalcBR empowers
   2. Enter the required inputs into the form.
   3. Click "Calcular" to view the results.
 - **Interpret the output**: View calculated financial planning and analysis results.
+
+## License
+This project is licensed under the MIT License.
