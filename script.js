@@ -1,116 +1,89 @@
-// Criação de uma interface gráfica para verificar se compensa realizar parcelamento ou pagar à vista
-// Usando HTML, CSS e JavaScript
+// Referências aos elementos HTML
+const selectOpcao = document.getElementById("opcao");
+const calcularBtn = document.getElementById("calcular");
+const resultadoDiv = document.getElementById("resultado");
+const inputContainer = document.getElementById("input-container");
 
-// HTML Estrutura
-const appHTML = `
-  <div id="app">
-    <h1>Calculadora de Parcelamento</h1>
-
-    <div class="form-group">
-      <label for="opcao">Escolha a opção de cálculo:</label>
-      <select id="opcao">
-        <option value="0">-- Selecione --</option>
-        <option value="1">Valor total com desconto vs parcelamento</option>
-        <option value="2">Valor à vista vs parcelas definidas</option>
-        <option value="3">(opção 3)</option>
-        <option value="4">(opção 4)</option>
-        <option value="5">(opção 5)</option>
-        <option value="6">(opção 6)</option>
-        <option value="7">(opção 7)</option>
-      </select>
-    </div>
-
-    <div id="input-container" class="form-group"></div>
-    <button id="calcular">Calcular</button>
-    <div id="resultado"></div>
-  </div>
-`;
-
-document.body.innerHTML = appHTML;
-
-// Funções Auxiliares
+// Limpa os inputs e a área de resultados
 function limparCampos() {
     inputContainer.innerHTML = "";
     resultadoDiv.innerHTML = "";
 }
 
+// Cria dinamicamente campos de entrada de acordo com a opção escolhida
 function criarCamposParaOpcao(opcao) {
     limparCampos();
 
-    if (opcao === "1") {
-        inputContainer.innerHTML = `
-            <label>Digite o valor total da compra (R$): <input type="number" id="valorTotal" step="0.01" required></label>
-            <label>Digite o número de parcelas: <input type="number" id="parcelas" min="1" required></label>
-            <label>Digite a taxa de rendimento mensal (%): <input type="number" id="taxaRendimento" step="0.01" required></label>
-            <label>Digite a porcentagem de desconto à vista (se houver): <input type="number" id="descontoVista" step="0.01"></label>
-            <label>Deseja considerar imposto de renda sobre os rendimentos? (S/N): 
-                <select id="considerarIR">
-                    <option value="N">Não</option>
-                    <option value="S">Sim</option>
-                </select>
-            </label>
-        `;
-    } else if (opcao === "2") {
-        inputContainer.innerHTML = `
-            <label>Digite o valor da compra à vista (R$): <input type="number" id="valorVista" step="0.01" required></label>
-            <label>Digite o número de parcelas: <input type="number" id="parcelas" min="1" required></label>
-            <label>Digite o valor de cada parcela (R$): <input type="number" id="valorParcela" step="0.01" required></label>
-            <label>Digite a taxa de rendimento mensal (%): <input type="number" id="taxaRendimento" step="0.01" required></label>
-            <label>Deseja considerar imposto de renda sobre os rendimentos? (S/N): 
-                <select id="considerarIR">
-                    <option value="N">Não</option>
-                    <option value="S">Sim</option>
-                </select>
-            </label>
-        `;
-    } else if (["3", "4", "5", "6", "7"].includes(opcao)) {
-        inputContainer.innerHTML = `
-            <p>Interface da opção ${opcao} em construção.</p>
-        `;
+    switch (opcao) {
+        case "1":
+            inputContainer.innerHTML = `
+                <label>Digite o valor total da compra (R$): <input type="number" id="valorTotal" step="0.01" required></label>
+                <label>Digite o número de parcelas: <input type="number" id="parcelas" min="1" required></label>
+                <label>Digite a taxa de rendimento mensal (%): <input type="number" id="taxaRendimento" step="0.01" required></label>
+                <label>Digite a porcentagem de desconto à vista (se houver): <input type="number" id="descontoVista" step="0.01"></label>
+                <label>Deseja considerar imposto de renda sobre os rendimentos? 
+                    <select id="considerarIR">
+                        <option value="N">Não</option>
+                        <option value="S">Sim</option>
+                    </select>
+                </label>
+            `;
+            break;
+        case "2":
+            inputContainer.innerHTML = `
+                <label>Digite o valor da compra à vista (R$): <input type="number" id="valorVista" step="0.01" required></label>
+                <label>Digite o número de parcelas: <input type="number" id="parcelas" min="1" required></label>
+                <label>Digite o valor de cada parcela (R$): <input type="number" id="valorParcela" step="0.01" required></label>
+                <label>Digite a taxa de rendimento mensal (%): <input type="number" id="taxaRendimento" step="0.01" required></label>
+                <label>Deseja considerar imposto de renda sobre os rendimentos? 
+                    <select id="considerarIR">
+                        <option value="N">Não</option>
+                        <option value="S">Sim</option>
+                    </select>
+                </label>
+            `;
+            break;
+        case "3":
+            inputContainer.innerHTML = `
+                <label>Valor da entrada (R$): <input type="number" id="entrada" step="0.01" required></label>
+                <label>Número de parcelas: <input type="number" id="parcelas" min="1" required></label>
+                <label>Valor de cada parcela (R$): <input type="number" id="valorParcela" step="0.01" required></label>
+                <label>Valor da compra à vista (R$): <input type="number" id="valorVista" step="0.01" required></label>
+            `;
+            break;
+        case "4":
+            inputContainer.innerHTML = `
+                <label>Primeira opção - Número de parcelas: <input type="number" id="parcelas1" min="1" required></label>
+                <label>Primeira opção - Valor de cada parcela (R$): <input type="number" id="valorParcela1" step="0.01" required></label>
+                <label>Segunda opção - Número de parcelas: <input type="number" id="parcelas2" min="1" required></label>
+                <label>Segunda opção - Valor de cada parcela (R$): <input type="number" id="valorParcela2" step="0.01" required></label>
+            `;
+            break;
+        case "5":
+            inputContainer.innerHTML = `
+                <label>Valor da parcela original (R$): <input type="number" id="valorParcela" step="0.01" required></label>
+                <label>Dias de atraso: <input type="number" id="diasAtraso" required></label>
+                <label>Multa por atraso (%): <input type="number" id="multa" step="0.01" required></label>
+                <label>Juros diários por atraso (%): <input type="number" id="jurosDiarios" step="0.01" required></label>
+            `;
+            break;
+        case "6":
+            inputContainer.innerHTML = `
+                <label>Número de parcelas: <input type="number" id="parcelas" min="1" required></label>
+                <label>Valor de cada parcela (R$): <input type="number" id="valorParcela" step="0.01" required></label>
+                <label>Inflação mensal estimada (%): <input type="number" id="inflacao" step="0.01" required></label>
+            `;
+            break;
+        case "7":
+            inputContainer.innerHTML = `
+                <label>Valor da compra à vista (R$): <input type="number" id="valorVista" step="0.01" required></label>
+                <label>Número de parcelas: <input type="number" id="parcelas" min="1" required></label>
+                <label>Valor de cada parcela (R$): <input type="number" id="valorParcela" step="0.01" required></label>
+                <label>Taxa de rendimento mensal do investimento alternativo (%): <input type="number" id="taxaInvestimento" step="0.01" required></label>
+            `;
+            break;
     }
 }
-
-function descerTela() {
-    window.scrollTo({
-        top: document.body.scrollHeight,
-        behavior: "smooth",
-    });
-}
-
-function ajustarTaxaParaIR(taxa, qntParcelas, considerarIR) {
-    if (considerarIR === "S") {
-        if (qntParcelas <= 6) {
-            return taxa * 0.775;
-        } else if (qntParcelas <= 12) {
-            return taxa * 0.80;
-        } else if (qntParcelas <= 24) {
-            return taxa * 0.825;
-        } else {
-            return taxa * 0.85;
-        }
-    }
-    return taxa;
-}
-
-function calcularRendimento(parcelas, valorParcela, taxaMensal) {
-    let saldo = 0;
-    let rendimentoTotal = 0;
-
-    for (let mes = 1; mes <= parcelas; mes++) {
-        saldo += valorParcela;
-        const rendimento = saldo * taxaMensal;
-        rendimentoTotal += rendimento;
-        saldo += rendimento;
-    }
-
-    return rendimentoTotal;
-}
-
-// Seletores e Eventos
-const selectOpcao = document.getElementById("opcao");
-const calcularBtn = document.getElementById("calcular");
-const resultadoDiv = document.getElementById("resultado");
-const inputContainer = document.getElementById("input-container");
 
 selectOpcao.addEventListener("change", () => {
     const opcao = selectOpcao.value;
@@ -121,70 +94,85 @@ calcularBtn.addEventListener("click", () => {
     const opcao = selectOpcao.value;
     resultadoDiv.innerHTML = "";
 
-    if (opcao === "0") {
-        resultadoDiv.innerHTML = `<p class="error">Por favor, selecione uma opção válida.</p>`;
-        descerTela();
-        return;
-    }
+    try {
+        switch (opcao) {
+            case "3":
+                const entrada = parseFloat(document.getElementById("entrada").value);
+                const parcelas3 = parseInt(document.getElementById("parcelas").value);
+                const valorParcela3 = parseFloat(document.getElementById("valorParcela").value);
+                const valorVista3 = parseFloat(document.getElementById("valorVista").value);
+                const totalParcelado = entrada + parcelas3 * valorParcela3;
 
-    const valorTotal = parseFloat(document.getElementById("valorTotal")?.value || 0);
-    const valorVista = parseFloat(document.getElementById("valorVista")?.value || 0);
-    const parcelas = parseInt(document.getElementById("parcelas")?.value || 0);
-    const taxaRendimento = parseFloat(document.getElementById("taxaRendimento")?.value || 0) / 100;
-    const descontoVista = parseFloat(document.getElementById("descontoVista")?.value || 0) / 100;
-    const considerarIR = document.getElementById("considerarIR")?.value || "N";
-    const valorParcela = parseFloat(document.getElementById("valorParcela")?.value || 0);
+                resultadoDiv.innerHTML = `
+                    <p>Total parcelado: R$ ${totalParcelado.toFixed(2)}</p>
+                    <p>Valor à vista: R$ ${valorVista3.toFixed(2)}</p>
+                    <strong>${totalParcelado > valorVista3 ? "Vale mais a pena pagar à vista." : "Vale mais a pena parcelar com entrada."}</strong>
+                `;
+                break;
 
-    let resultado = "";
+            case "4":
+                const parcelas1 = parseInt(document.getElementById("parcelas1").value);
+                const valorParcela1 = parseFloat(document.getElementById("valorParcela1").value);
+                const parcelas2 = parseInt(document.getElementById("parcelas2").value);
+                const valorParcela2 = parseFloat(document.getElementById("valorParcela2").value);
+                const total1 = parcelas1 * valorParcela1;
+                const total2 = parcelas2 * valorParcela2;
 
-    if (opcao === "1") {
-        if (!valorTotal || !parcelas || !taxaRendimento) {
-            resultadoDiv.innerHTML = `<p class="error">Por favor, preencha todos os campos necessários.</p>`;
-            descerTela();
-            return;
+                resultadoDiv.innerHTML = `
+                    <p>Total da primeira opção: R$ ${total1.toFixed(2)}</p>
+                    <p>Total da segunda opção: R$ ${total2.toFixed(2)}</p>
+                    <strong>${total1 < total2 ? "A primeira opção é melhor." : "A segunda opção é melhor."}</strong>
+                `;
+                break;
+
+            case "5":
+                const valorParcela5 = parseFloat(document.getElementById("valorParcela").value);
+                const diasAtraso = parseInt(document.getElementById("diasAtraso").value);
+                const multa = parseFloat(document.getElementById("multa").value) / 100;
+                const jurosDiarios = parseFloat(document.getElementById("jurosDiarios").value) / 100;
+                const valorCorrigido = valorParcela5 * (1 + multa + jurosDiarios * diasAtraso);
+
+                resultadoDiv.innerHTML = `
+                    <p>Valor com atraso: R$ ${valorCorrigido.toFixed(2)}</p>
+                `;
+                break;
+
+            case "6":
+                const parcelas6 = parseInt(document.getElementById("parcelas").value);
+                const valorParcela6 = parseFloat(document.getElementById("valorParcela").value);
+                const inflacao = parseFloat(document.getElementById("inflacao").value) / 100;
+
+                let valorTotalInflacao = 0;
+                for (let i = 1; i <= parcelas6; i++) {
+                    valorTotalInflacao += valorParcela6 / Math.pow(1 + inflacao, i);
+                }
+
+                resultadoDiv.innerHTML = `
+                    <p>Valor total considerando a inflação: R$ ${valorTotalInflacao.toFixed(2)}</p>
+                `;
+                break;
+
+            case "7":
+                const valorVista7 = parseFloat(document.getElementById("valorVista").value);
+                const parcelas7 = parseInt(document.getElementById("parcelas").value);
+                const valorParcela7 = parseFloat(document.getElementById("valorParcela").value);
+                const taxaInvestimento = parseFloat(document.getElementById("taxaInvestimento").value) / 100;
+
+                let saldo = valorVista7;
+                for (let i = 0; i < parcelas7; i++) {
+                    saldo = saldo * (1 + taxaInvestimento) - valorParcela7;
+                }
+
+                resultadoDiv.innerHTML = `
+                    <p>Valor final ao investir e parcelar: R$ ${saldo.toFixed(2)}</p>
+                    <strong>${saldo > 0 ? "Investir e parcelar é vantajoso." : "Melhor pagar à vista."}</strong>
+                `;
+                break;
+
+            default:
+                resultadoDiv.innerHTML = "<p>Opção ainda não implementada nesta interface.</p>";
         }
-
-        const taxaAjustada = ajustarTaxaParaIR(taxaRendimento, parcelas, considerarIR);
-        const valorVistaFinal = valorTotal * (1 - descontoVista);
-
-        const rendimento = calcularRendimento(parcelas, valorTotal / parcelas, taxaAjustada);
-        const valorFinalParcelado = valorTotal - rendimento;
-
-        resultado = `
-            <p>Valor total à vista (com desconto): R$ ${valorVistaFinal.toFixed(2)}</p>
-            <p>Valor total parcelado: R$ ${valorTotal.toFixed(2)}</p>
-            <p>Rendimentos acumulados: R$ ${rendimento.toFixed(2)}</p>
-            <p>Valor pago parcelado (com rendimento): R$ ${valorFinalParcelado.toFixed(2)}</p>
-        `;
-
-        resultado += valorVistaFinal < valorFinalParcelado
-            ? `<p>Compensa pagar à vista.</p>`
-            : `<p>Compensa parcelar.</p>`;
-    } else if (opcao === "2") {
-        if (!valorVista || !parcelas || !valorParcela || !taxaRendimento) {
-            resultadoDiv.innerHTML = `<p class="error">Por favor, preencha todos os campos necessários.</p>`;
-            descerTela();
-            return;
-        }
-
-        const valorTotalParcelado = parcelas * valorParcela;
-        const taxaAjustada = ajustarTaxaParaIR(taxaRendimento, parcelas, considerarIR);
-
-        const rendimento = calcularRendimento(parcelas, valorParcela, taxaAjustada);
-        const valorFinalParcelado = valorTotalParcelado - rendimento;
-
-        resultado = `
-            <p>Valor pagando à vista: R$ ${valorVista.toFixed(2)}</p>
-            <p>Valor total parcelado: R$ ${valorTotalParcelado.toFixed(2)}</p>
-            <p>Rendimentos acumulados: R$ ${rendimento.toFixed(2)}</p>
-            <p>Valor pago parcelando (descontados os rendimentos): R$ ${valorFinalParcelado.toFixed(2)}</p>
-        `;
-
-        resultado += valorVista < valorFinalParcelado
-            ? `<p>Compensa pagar à vista.</p>`
-            : `<p>Compensa parcelar.</p>`;
+    } catch (erro) {
+        resultadoDiv.innerHTML = `<p style="color: red;">Erro nos dados inseridos. Verifique os campos e tente novamente.</p>`;
     }
-
-    resultadoDiv.innerHTML = resultado;
-    descerTela();
 });
