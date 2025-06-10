@@ -1,16 +1,39 @@
-// Referências aos elementos HTML
-const selectOpcao = document.getElementById("opcao");
-const calcularBtn = document.getElementById("calcular");
-const resultadoDiv = document.getElementById("resultado");
-const inputContainer = document.getElementById("input-container");
+// Criação de uma interface gráfica para verificar se compensa realizar parcelamento ou pagar à vista
+// Usando HTML, CSS e JavaScript
 
-// Limpa os inputs e a área de resultados
+// HTML Estrutura
+const appHTML = `
+  <div id="app">
+    <h1>Calculadora de Parcelamento</h1>
+
+    <div class="form-group">
+      <label for="opcao">Escolha a opção de cálculo:</label>
+      <select id="opcao">
+        <option value="0">-- Selecione --</option>
+        <option value="1">Valor total com desconto vs parcelamento</option>
+        <option value="2">Valor à vista vs parcelas definidas</option>
+        <option value="3">(opção 3)</option>
+        <option value="4">(opção 4)</option>
+        <option value="5">(opção 5)</option>
+        <option value="6">(opção 6)</option>
+        <option value="7">(opção 7)</option>
+      </select>
+    </div>
+
+    <div id="input-container" class="form-group"></div>
+    <button id="calcular">Calcular</button>
+    <div id="resultado"></div>
+  </div>
+`;
+
+document.body.innerHTML = appHTML;
+
+// Funções Auxiliares
 function limparCampos() {
     inputContainer.innerHTML = "";
     resultadoDiv.innerHTML = "";
 }
 
-// Cria dinamicamente campos de entrada de acordo com a opção escolhida
 function criarCamposParaOpcao(opcao) {
     limparCampos();
 
@@ -40,16 +63,13 @@ function criarCamposParaOpcao(opcao) {
                 </select>
             </label>
         `;
+    } else if (["3", "4", "5", "6", "7"].includes(opcao)) {
+        inputContainer.innerHTML = `
+            <p>Interface da opção ${opcao} em construção.</p>
+        `;
     }
 }
 
-// Adiciona evento para atualizar os campos de entrada ao selecionar uma opção
-selectOpcao.addEventListener("change", () => {
-    const opcao = selectOpcao.value;
-    criarCamposParaOpcao(opcao);
-});
-
-// Função para descer a tela automaticamente
 function descerTela() {
     window.scrollTo({
         top: document.body.scrollHeight,
@@ -57,7 +77,6 @@ function descerTela() {
     });
 }
 
-// Função para ajustar a taxa de rendimento considerando o IR
 function ajustarTaxaParaIR(taxa, qntParcelas, considerarIR) {
     if (considerarIR === "S") {
         if (qntParcelas <= 6) {
@@ -73,25 +92,34 @@ function ajustarTaxaParaIR(taxa, qntParcelas, considerarIR) {
     return taxa;
 }
 
-// Função para calcular rendimentos utilizando juros compostos
 function calcularRendimento(parcelas, valorParcela, taxaMensal) {
-    let saldo = 0; // Saldo acumulado
-    let rendimentoTotal = 0; // Rendimento total acumulado
+    let saldo = 0;
+    let rendimentoTotal = 0;
 
     for (let mes = 1; mes <= parcelas; mes++) {
-        saldo += valorParcela; // Adiciona a parcela ao saldo
-        const rendimento = saldo * taxaMensal; // Calcula rendimento mensal
-        rendimentoTotal += rendimento; // Acumula rendimento
-        saldo += rendimento; // Atualiza saldo com rendimento
+        saldo += valorParcela;
+        const rendimento = saldo * taxaMensal;
+        rendimentoTotal += rendimento;
+        saldo += rendimento;
     }
 
     return rendimentoTotal;
 }
 
-// Adiciona evento ao botão "Calcular"
+// Seletores e Eventos
+const selectOpcao = document.getElementById("opcao");
+const calcularBtn = document.getElementById("calcular");
+const resultadoDiv = document.getElementById("resultado");
+const inputContainer = document.getElementById("input-container");
+
+selectOpcao.addEventListener("change", () => {
+    const opcao = selectOpcao.value;
+    criarCamposParaOpcao(opcao);
+});
+
 calcularBtn.addEventListener("click", () => {
     const opcao = selectOpcao.value;
-    resultadoDiv.innerHTML = ""; // Limpa resultados anteriores
+    resultadoDiv.innerHTML = "";
 
     if (opcao === "0") {
         resultadoDiv.innerHTML = `<p class="error">Por favor, selecione uma opção válida.</p>`;
@@ -99,7 +127,6 @@ calcularBtn.addEventListener("click", () => {
         return;
     }
 
-    // Coleta os valores inseridos pelo usuário
     const valorTotal = parseFloat(document.getElementById("valorTotal")?.value || 0);
     const valorVista = parseFloat(document.getElementById("valorVista")?.value || 0);
     const parcelas = parseInt(document.getElementById("parcelas")?.value || 0);
