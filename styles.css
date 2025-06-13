@@ -1,4 +1,22 @@
-/* Reset básico */
+/* Variables for easier theme management */
+:root {
+    --primary-color: #007bff;
+    --primary-dark-color: #0056b3;
+    --background-light: #f0f4f8;
+    --background-card: #ffffff;
+    --background-result: #f8f9fa;
+    --text-color: #333;
+    --border-color: #ddd;
+    --shadow-light: rgba(0, 0, 0, 0.1);
+    --shadow-medium: rgba(0, 0, 0, 0.15);
+    --spacing-xs: 5px;
+    --spacing-sm: 10px;
+    --spacing-md: 15px;
+    --spacing-lg: 20px;
+    --border-radius: 8px;
+}
+
+/* Reset básico e tipografia */
 * {
     margin: 0;
     padding: 0;
@@ -7,97 +25,241 @@
 
 body {
     font-family: 'Roboto', sans-serif;
-    background-color: #f0f4f8;
-    color: #333;
+    background-color: var(--background-light);
+    color: var(--text-color);
+    /* Using min-height to allow content to expand beyond viewport height */
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start; /* Align content to the top initially */
     align-items: center;
-    height: 100vh;
+    padding: var(--spacing-lg) var(--spacing-sm) 80px; /* Add padding for footer */
+    line-height: 1.6; /* Improved readability */
 }
 
 .main-container {
-    width: 100%;
+    width: 95%; /* Adjust width for better responsiveness */
     max-width: 600px;
-    background: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    padding: 20px;
+    background: var(--background-card);
+    border-radius: var(--border-radius);
+    box-shadow: 0 6px 12px var(--shadow-medium); /* Slightly stronger shadow */
+    padding: var(--spacing-lg);
+    margin-top: var(--spacing-lg); /* Add some margin from the top */
+    margin-bottom: var(--spacing-lg); /* Add margin before footer or next elements */
+    flex-grow: 1; /* Allows container to grow and fill available space */
 }
 
+/* Header Section */
 .header {
     text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: var(--spacing-lg);
 }
 
 .header h1 {
-    font-size: 1.8rem;
-    color: #007bff;
+    font-size: 2rem; /* Slightly larger heading */
+    color: var(--primary-color);
+    margin-bottom: var(--spacing-sm);
 }
 
+.header p {
+    font-size: 1rem;
+    color: #666;
+}
+
+/* Form Styling */
 .form-container {
-    margin-bottom: 20px;
+    margin-bottom: var(--spacing-lg);
 }
 
 .form-group {
-    margin-bottom: 15px;
+    margin-bottom: var(--spacing-md);
 }
 
 label {
     display: block;
     font-weight: 500;
-    margin-bottom: 5px;
+    margin-bottom: var(--spacing-xs);
+    color: var(--text-color);
 }
 
-input, select, button {
+input[type="number"],
+input[type="text"], /* Add text type if you use it */
+select {
     width: 100%;
-    padding: 10px;
+    padding: var(--spacing-sm);
     font-size: 1rem;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 5px;
     outline: none;
-    transition: 0.3s;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    -webkit-appearance: none; /* Removes default styling on some browsers */
+    -moz-appearance: none;
+    appearance: none;
+    height: 40px; /* Consistent height */
 }
 
-input:focus, select:focus {
-    border-color: #007bff;
+input[type="number"]:focus,
+input[type="text"]:focus,
+select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25); /* Subtle focus ring */
 }
 
+/* Specific styling for dynamic fields like jurosParceladoFieldsDiv */
+#jurosParceladoFields {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--background-light);
+}
+
+#jurosParceladoFields label {
+    margin-top: var(--spacing-sm);
+}
+
+
+/* Button Styling */
 button {
-    background-color: #007bff;
+    background-color: var(--primary-color);
     color: #fff;
     font-weight: 700;
     border: none;
     cursor: pointer;
-    transition: 0.3s;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    padding: var(--spacing-sm) var(--spacing-lg); /* Added horizontal padding */
+    height: 45px; /* Slightly taller button */
 }
 
 button:hover {
-    background-color: #0056b3;
+    background-color: var(--primary-dark-color);
+    transform: translateY(-2px); /* Slight lift effect */
 }
 
+button:active {
+    transform: translateY(0);
+}
+
+
+/* Results Section */
 .resultado {
-    margin-bottom: 70px;
-    padding: 20px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    text-align: center;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-top: var(--spacing-lg); /* Use margin-top to separate from form */
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    background: var(--background-result);
+    border-radius: var(--border-radius);
+    text-align: left; /* Align text left for better readability */
+    box-shadow: 0 4px 6px var(--shadow-light);
+    overflow-x: auto; /* For tables that might exceed width */
 }
 
-/* Estilo do rodapé */
+.resultado p {
+    margin-bottom: var(--spacing-sm);
+    font-size: 1.05rem;
+}
+
+.resultado strong {
+    display: block; /* Make the strong text a block for better spacing */
+    margin-top: var(--spacing-md);
+    font-size: 1.1rem;
+    color: var(--primary-dark-color);
+}
+
+.resultado h3 {
+    color: var(--primary-color);
+    margin-bottom: var(--spacing-md);
+    font-size: 1.5rem;
+}
+
+/* Styling for tables inside results (for detailed simulations) */
+.resultado table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: var(--spacing-md);
+    font-size: 0.9rem;
+}
+
+.resultado th, .resultado td {
+    border: 1px solid var(--border-color);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    text-align: right; /* Align numbers to the right */
+}
+
+.resultado th {
+    background-color: #e9ecef;
+    font-weight: 600;
+    text-align: center; /* Center header text */
+}
+
+.resultado tr:nth-child(even) {
+    background-color: #f6f6f6;
+}
+
+/* Error message styling */
+.resultado p[style*="color: red;"] {
+    font-weight: 600;
+}
+
+
+/* Footer */
 .footer {
     width: 100%;
     text-align: center;
-    background-color: #007bff;
+    background-color: var(--primary-color);
     color: #fff;
-    padding: 10px 0;
+    padding: var(--spacing-sm) 0;
     position: fixed;
     bottom: 0;
     left: 0;
+    box-shadow: 0 -2px 8px var(--shadow-light); /* Shadow above footer */
+    z-index: 100; /* Ensure footer stays on top */
 }
 
 .footer p {
-    font-size: 0.9rem;
-    margin: 10px 0;
+    font-size: 0.85rem; /* Slightly smaller font for footer text */
+    margin: 5px 0;
+}
+
+/* Media Queries for Responsiveness */
+@media (max-width: 768px) {
+    .main-container {
+        width: 95%;
+        padding: var(--spacing-lg) var(--spacing-md);
+    }
+
+    .header h1 {
+        font-size: 1.6rem;
+    }
+
+    input, select, button {
+        font-size: 0.95rem;
+    }
+
+    .resultado h3 {
+        font-size: 1.3rem;
+    }
+
+    .resultado p {
+        font-size: 0.95rem;
+    }
+
+    .resultado table {
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: var(--spacing-md) var(--spacing-xs) 80px;
+    }
+    .main-container {
+        padding: var(--spacing-md);
+        margin-top: var(--spacing-md);
+    }
+    .header h1 {
+        font-size: 1.4rem;
+    }
+    .footer p {
+        font-size: 0.8rem;
+    }
 }
