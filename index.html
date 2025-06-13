@@ -10,7 +10,11 @@
 </head>
 <body>
     <div class="main-container">
-        <header class="header"> <h1>TaxCalcBR: Simulador de Pagamentos e Investimentos</h1> <p>Selecione uma opção abaixo para começar sua análise financeira.</p> </header>
+        <header class="header"> <h1>TaxCalcBR: Simulador de Pagamentos e Investimentos</h1> <p>Selecione uma opção abaixo para começar sua análise financeira.</p> <div class="selic-info">
+                <p>Taxa SELIC atual (ao ano): <span id="selic-rate">Carregando...</span></p>
+                <small>(Fonte: Banco Central do Brasil)</small>
+            </div>
+        </header>
 
         <main class="form-container"> <form id="form-simulador">
                 <div class="form-group">
@@ -23,16 +27,20 @@
                         <option value="7">Comparar com investimento alternativo</option>
                     </select>
                     <small id="opcao-description" class="sr-only">Selecione o tipo de cálculo financeiro que você deseja realizar.</small> </div>
-                <div id="input-container" class="form-group"> </div>
+                <div id="input-container" class="form-group">
+                    </div>
                 <button type="button" id="calcular">Calcular</button>
             </form>
         </main>
 
-        <section id="resultado" class="resultado" aria-live="polite"></section> </div>
+        <section id="resultado" class="resultado" aria-live="polite"></section>
+    </div>
 
     <footer class="footer">
         <p>Desenvolvido por Gabriel Ribeiro | &copy; 2025</p>
-        <div class="social-links"> <a href="https://www.github.com/gabrielbribeiroo/" target="_blank" rel="noopener noreferrer" aria-label="Visite meu perfil no GitHub"> <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/github/github-original.svg" alt="Ícone GitHub" width="30" height="30">
+        <div class="social-links">
+            <a href="https://www.github.com/gabrielbribeiroo/" target="_blank" rel="noopener noreferrer" aria-label="Visite meu perfil no GitHub">
+                <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/github/github-original.svg" alt="Ícone GitHub" width="30" height="30">
             </a>
             <a href="mailto:gabrielbroliveira@gmail.com" aria-label="Envie um e-mail para gabrielbroliveira@gmail.com">
                 <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/google/google-original.svg" alt="Ícone Gmail" width="30" height="30">
