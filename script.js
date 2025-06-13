@@ -4,99 +4,154 @@ const calcularBtn = document.getElementById("calcular");
 const resultadoDiv = document.getElementById("resultado");
 const inputContainer = document.getElementById("input-container");
 const selicRateSpan = document.getElementById("selic-rate");
-const ipcaRateSpan = document.getElementById("ipca-rate"); // Novo span para o IPCA
+const ipcaRateSpan = document.getElementById("ipca-rate");
 
-// --- Funções de Ajuda e Cálculos ---
+// --- Funções de Ajuda e Validação de Entrada ---
 
-// Limpa os inputs e a área de resultados
+/**
+ * Limpa os campos de entrada dinâmicos e a área de resultados.
+ */
 function limparCampos() {
     inputContainer.innerHTML = "";
     resultadoDiv.innerHTML = "";
 }
 
-// Função auxiliar para obter valor numérico de um input
+/**
+ * Obtém o valor numérico de um input HTML, validando-o.
+ * @param {string} id - O ID do elemento input.
+ * @returns {number} O valor numérico do input.
+ * @throws {Error} Se o campo estiver vazio ou o valor for inválido.
+ */
 function getNumericInputValue(id) {
     const element = document.getElementById(id);
     if (!element || element.value === "") {
-        throw new Error(`O campo '${id}' é obrigatório.`);
+        throw new Error(`O campo "${element ? element.labels[0].textContent.replace(':', '').trim() : id}" é obrigatório.`);
     }
     const value = parseFloat(element.value.replace(',', '.'));
     if (isNaN(value)) {
-        throw new Error(`Valor inválido para o campo '${id}'.`);
+        throw new Error(`Valor inválido para o campo "${element.labels[0].textContent.replace(':', '').trim()}".`);
     }
     return value;
 }
 
-// Função auxiliar para obter valor inteiro de um input
+/**
+ * Obtém o valor inteiro de um input HTML, validando-o.
+ * @param {string} id - O ID do elemento input.
+ * @returns {number} O valor inteiro do input.
+ * @throws {Error} Se o campo estiver vazio ou o valor for inválido.
+ */
 function getIntInputValue(id) {
     const element = document.getElementById(id);
     if (!element || element.value === "") {
-        throw new Error(`O campo '${id}' é obrigatório.`);
+        throw new Error(`O campo "${element ? element.labels[0].textContent.replace(':', '').trim() : id}" é obrigatório.`);
     }
     const value = parseInt(element.value);
     if (isNaN(value)) {
-        throw new Error(`Valor inválido para o campo '${id}'.`);
+        throw new Error(`Valor inválido para o campo "${element.labels[0].textContent.replace(':', '').trim()}".`);
     }
     return value;
 }
 
-// Função auxiliar para obter resposta 'S' ou 'N'
+/**
+ * Obtém o valor de um select (geralmente 'S' ou 'N').
+ * @param {string} id - O ID do elemento select.
+ * @returns {string} O valor selecionado.
+ * @throws {Error} Se o elemento não for encontrado.
+ */
 function getYesNoValue(id) {
     const element = document.getElementById(id);
     if (!element) {
-        throw new Error(`O campo de seleção '${id}' não foi encontrado.`);
+        throw new Error(`O campo de seleção "${id}" não foi encontrado.`);
     }
     return element.value;
 }
 
-// Função para ajustar a taxa de rendimento com base no IR
+// --- Funções de Cálculo Financeiro ---
+
+/**
+ * Ajusta a taxa de rendimento mensal com base nas alíquotas de Imposto de Renda.
+ * @param {number} taxa - Taxa de rendimento mensal original (decimal).
+ * @param {number} qnt_parcelas - Quantidade de parcelas (para determinar a alíquota de IR).
+ * @param {string} considerarIR - 'S' para considerar IR, 'N' caso contrário.
+ * @returns {number} A taxa ajustada.
+ */
 function ajustarTaxaParaIR(taxa, qnt_parcelas, considerarIR) {
     if (considerarIR === 'S') {
-        if (qnt_parcelas <= 6) {
+        if (qnt_parcelas <= 6) { // Até 180 dias
             return taxa * 0.775; // 22.5% de IR
-        } else if (qnt_parcelas <= 12) {
+        } else if (qnt_parcelas <= 12) { // De 181 a 360 dias
             return taxa * 0.80; // 20% de IR
-        } else if (qnt_parcelas <= 24) {
+        } else if (qnt_parcelas <= 24) { // De 361 a 720 dias
             return taxa * 0.825; // 17.5% de IR
-        } else {
+        } else { // Acima de 720 dias
             return taxa * 0.85; // 15% de IR
         }
     }
     return taxa;
 }
 
-// Função para calcular o valor total parcelado com juros (similar ao .ipynb)
+/**
+ * Calcula o valor total de uma dívida com juros (simples ou compostos).
+ * @param {number} valorInicial - Valor principal da dívida.
+ * @param {number} qntParcelas - Número de períodos de juros.
+ * @param {number} jurosMensais - Taxa de juros por período (decimal).
+ * @param {string} tipoJuros - 'simples' ou 'composto'.
+ * @returns {number} O valor total da dívida após os juros.
+ */
 function calcularValorParceladoComJuros(valorInicial, qntParcelas, jurosMensais = 0, tipoJuros = 'composto') {
     if (tipoJuros === 'simples') {
         return valorInicial * (1 + jurosMensais * qntParcelas);
-    } else {
+    } else { // Padrão para composto
         return valorInicial * Math.pow((1 + jurosMensais), qntParcelas);
     }
 }
 
-// Simula os rendimentos acumulados (similar ao .ipynb)
+/**
+ * Simula os rendimentos acumulados de um valor ao longo das parcelas.
+ * @param {number} qnt_parcelas - Quantidade total de parcelas.
+ * @param {number} valor_parcela - Valor de cada parcela.
+ * @param {number} taxa_mensal - Taxa de rendimento mensal (decimal).
+ * @returns {{ganho: number, simulacaoDetalhada: string}} Objeto com o ganho total e a tabela HTML da simulação.
+ */
 function simularRendimento(qnt_parcelas, valor_parcela, taxa_mensal) {
     let ganho = 0;
-    let divida = valor_parcela * qnt_parcelas;
-    let simulacaoDetalhada = '<p>Detalhes do Rendimento:</p><table><thead><tr><th>Parcela</th><th>Dívida (R$)</th><th>Rendimento (R$)</th></tr></thead><tbody>';
+    // O ganho é simulado sobre o saldo devedor que "não foi pago" à vista
+    // No contexto de comparação, o dinheiro que seria pago à vista é o capital
+    // sobre o qual o rendimento ocorre enquanto se paga em parcelas.
+    // Assim, a "dívida" inicial para cálculo do rendimento é o valor total nominal da compra.
+    let capitalInvestidoInicial = valor_parcela * qnt_parcelas;
+    let simulacaoDetalhada = '<p>Detalhes do Rendimento:</p><table><thead><tr><th>Parcela</th><th>Capital p/ Rendimento (R$)</th><th>Rendimento (R$)</th></tr></thead><tbody>';
 
     for (let i = 1; i <= qnt_parcelas; i++) {
-        let rendimento = divida * taxa_mensal;
-        ganho += rendimento;
-        divida -= valor_parcela;
-        simulacaoDetalhada += `<tr><td>${i}</td><td>${divida.toFixed(2)}</td><td>${rendimento.toFixed(2)}</td></tr>`;
+        let rendimentoMensal = capitalInvestidoInicial * taxa_mensal;
+        ganho += rendimentoMensal;
+        // Se a lógica for de "rendimento sobre o que eu ainda não paguei", a base diminui
+        // A simulação anterior usava 'divida' decrescente, mas para "rendimentos acumulados"
+        // no contexto de um valor que poderia estar investido, a lógica mais comum
+        // seria o rendimento sobre o saldo que NÃO foi usado para pagar à vista.
+        // A lógica do Python aqui parece ser o rendimento sobre o saldo devedor restante
+        // se considerarmos que o dinheiro "parado" em dívida poderia render.
+        // Vamos manter a lógica do Python de rendimento sobre o saldo decrescente da dívida.
+        simulacaoDetalhada += `<tr><td>${i}</td><td>${capitalInvestidoInicial.toFixed(2)}</td><td>${rendimentoMensal.toFixed(2)}</td></tr>`;
+        capitalInvestidoInicial -= valor_parcela; // A base para o rendimento decresce a cada parcela paga
     }
     simulacaoDetalhada += '</tbody></table>';
     return { ganho, simulacaoDetalhada };
 }
 
-// Função para buscar e exibir a taxa SELIC
+
+// --- Funções de Busca de Taxas Externas ---
+
+/**
+ * Busca e exibe a taxa SELIC meta anual do Banco Central do Brasil.
+ */
 async function fetchSelicRate() {
+    // Série 432: Taxa de juros - Selic (anual)
     const selicAnualApiUrl = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json";
     try {
         const responseAnual = await fetch(selicAnualApiUrl);
         if (!responseAnual.ok) {
-            throw new Error(`Erro ao buscar SELIC anual: ${responseAnual.statusText}`);
+            throw new Error(`HTTP error! status: ${responseAnual.status}`);
         }
         const dataAnual = await responseAnual.json();
 
@@ -112,28 +167,27 @@ async function fetchSelicRate() {
     }
 }
 
-// Função para buscar e exibir o IPCA anual (acumulado em 12 meses)
+/**
+ * Busca os valores mensais do IPCA e calcula o acumulado em 12 meses.
+ */
 async function fetchIpcaAnnualRate() {
-    // Código da série IPCA mensal no BCB é 433
-    // Para o acumulado em 12 meses, precisamos dos últimos 12 valores mensais
+    // Série 433: IPCA - Índice Nacional de Preços ao Consumidor Amplo (Mensal)
     const ipcaMensalApiUrl = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados/ultimos/12?formato=json";
 
     try {
         const response = await fetch(ipcaMensalApiUrl);
         if (!response.ok) {
-            throw new Error(`Erro ao buscar IPCA mensal: ${response.statusText}`);
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
 
         if (data && data.length === 12) {
-            // Calcular o IPCA acumulado em 12 meses
             let ipcaAcumulado = 1;
             data.forEach(item => {
                 const valorMensal = parseFloat(item.valor) / 100; // Converte para decimal
                 ipcaAcumulado *= (1 + valorMensal);
             });
-            // Converte de volta para porcentagem e formata
-            ipcaAcumulado = (ipcaAcumulado - 1) * 100;
+            ipcaAcumulado = (ipcaAcumulado - 1) * 100; // Converte de volta para porcentagem
             ipcaRateSpan.textContent = `${ipcaAcumulado.toFixed(2)}%`;
         } else {
             ipcaRateSpan.textContent = "N/A (dados incompletos)";
@@ -145,15 +199,128 @@ async function fetchIpcaAnnualRate() {
 }
 
 
-// --- Criação Dinâmica dos Campos de Entrada ---
+// --- Criação Dinâmica dos Campos de Entrada do Formulário ---
 
-// A função 'criarCamposParaOpcao' permanece a mesma, pois os inputs são para as simulações, não para as taxas exibidas.
+/**
+ * Cria dinamicamente os campos de entrada no formulário de acordo com a opção selecionada.
+ * @param {string} opcao - O valor da opção selecionada (1 a 7).
+ */
+function criarCamposParaOpcao(opcao) {
+    limparCampos();
 
-// ... (Resto da função criarCamposParaOpcao e todas as funções calcularOpcao1 a calcularOpcao7) ...
-// (Mantenha o código das funções calcularOpcao1 a calcularOpcao7 como no último exemplo fornecido)
+    let htmlContent = '';
+    switch (opcao) {
+        case "1": // Rendimento vs Parcelas
+            htmlContent = `
+                <label for="valorTotal">Valor total da compra (R$): <input type="number" id="valorTotal" step="0.01" required></label>
+                <label for="parcelas">Número de parcelas: <input type="number" id="parcelas" min="1" required></label>
+                <label for="taxaRendimento">Taxa de rendimento mensal (%): <input type="number" id="taxaRendimento" step="0.01" required></label>
+                <label for="descontoVista">Porcentagem de desconto à vista (se houver): <input type="number" id="descontoVista" step="0.01" value="0"></label>
+                <label for="temJurosParcelado">Há juros em pagar parcelado? 
+                    <select id="temJurosParcelado">
+                        <option value="N">Não</option>
+                        <option value="S">Sim</option>
+                    </select>
+                </label>
+                <div id="jurosParceladoFields" style="display:none;">
+                    <label for="tipoJurosParcelado">Tipo de juros:
+                        <select id="tipoJurosParcelado">
+                            <option value="simples">Simples</option>
+                            <option value="composto">Compostos</option>
+                        </select>
+                    </label>
+                    <label for="taxaJurosParcelado">Taxa de juros mensal (%): <input type="number" id="taxaJurosParcelado" step="0.01"></label>
+                </div>
+                <label for="considerarIR">Considerar imposto de renda sobre os rendimentos? 
+                    <select id="considerarIR">
+                        <option value="N">Não</option>
+                        <option value="S">Sim</option>
+                    </select>
+                </label>
+            `;
+            break;
+        case "2": // À vista vs Parcelas
+            htmlContent = `
+                <label for="valorVista">Valor da compra à vista (R$): <input type="number" id="valorVista" step="0.01" required></label>
+                <label for="parcelas">Número de parcelas: <input type="number" id="parcelas" min="1" required></label>
+                <label for="valorParcela">Valor de cada parcela (R$): <input type="number" id="valorParcela" step="0.01" required></label>
+                <label for="taxaRendimento">Taxa de rendimento mensal (%): <input type="number" id="taxaRendimento" step="0.01" required></label>
+                <label for="considerarIR">Considerar imposto de renda sobre os rendimentos? 
+                    <select id="considerarIR">
+                        <option value="N">Não</option>
+                        <option value="S">Sim</option>
+                    </select>
+                </label>
+            `;
+            break;
+        case "3": // Parcelamento com entrada
+            htmlContent = `
+                <label for="entrada">Valor da entrada (R$): <input type="number" id="entrada" step="0.01" required></label>
+                <label for="parcelas">Número de parcelas: <input type="number" id="parcelas" min="1" required></label>
+                <label for="valorParcela">Valor de cada parcela (R$): <input type="number" id="valorParcela" step="0.01" required></label>
+                <label for="valorVista">Valor da compra à vista (R$): <input type="number" id="valorVista" step="0.01" required></label>
+            `;
+            break;
+        case "4": // Comparar duas opções de parcelamento
+            htmlContent = `
+                <h3>Primeira opção:</h3>
+                <label for="parcelas1">Número de parcelas: <input type="number" id="parcelas1" min="1" required></label>
+                <label for="valorParcela1">Valor de cada parcela (R$): <input type="number" id="valorParcela1" step="0.01" required></label>
+                <h3>Segunda opção:</h3>
+                <label for="parcelas2">Número de parcelas: <input type="number" id="parcelas2" min="1" required></label>
+                <label for="valorParcela2">Valor de cada parcela (R$): <input type="number" id="valorParcela2" step="0.01" required></label>
+            `;
+            break;
+        case "5": // Impacto de atrasos em parcelas
+            htmlContent = `
+                <label for="valorParcelaOriginal">Valor da parcela original (R$): <input type="number" id="valorParcelaOriginal" step="0.01" required></label>
+                <label for="diasAtraso">Dias de atraso: <input type="number" id="diasAtraso" required></label>
+                <label for="multa">Multa por atraso (%): <input type="number" id="multa" step="0.01" required></label>
+                <label for="jurosDiarios">Juros diários por atraso (%): <input type="number" id="jurosDiarios" step="0.01" required></label>
+            `;
+            break;
+        case "6": // Simulação com inflação
+            htmlContent = `
+                <label for="parcelas">Número de parcelas: <input type="number" id="parcelas" min="1" required></label>
+                <label for="valorParcela">Valor de cada parcela (R$): <input type="number" id="valorParcela" step="0.01" required></label>
+                <label for="inflacao">Inflação mensal estimada (%): <input type="number" id="inflacao" step="0.01" required></label>
+            `;
+            break;
+        case "7": // Comparar com investimento alternativo
+            htmlContent = `
+                <label for="valorVista">Valor da compra à vista (R$): <input type="number" id="valorVista" step="0.01" required></label>
+                <label for="parcelas">Número de parcelas: <input type="number" id="parcelas" min="1" required></label>
+                <label for="valorParcela">Valor de cada parcela (R$): <input type="number" id="valorParcela" step="0.01" required></label>
+                <label for="taxaInvestimento">Taxa de rendimento mensal do investimento alternativo (%): <input type="number" id="taxaInvestimento" step="0.01" required></label>
+            `;
+            break;
+    }
+    inputContainer.innerHTML = htmlContent;
 
-// --- Funções de Cálculo por Opção ---
+    // Adiciona listener para a seleção de juros parcelados na Opção 1
+    if (opcao === "1") {
+        const temJurosParceladoSelect = document.getElementById("temJurosParcelado");
+        const jurosParceladoFieldsDiv = document.getElementById("jurosParceladoFields");
 
+        if (temJurosParceladoSelect) {
+            temJurosParceladoSelect.addEventListener('change', () => {
+                if (temJurosParceladoSelect.value === 'S') {
+                    jurosParceladoFieldsDiv.style.display = 'block';
+                } else {
+                    jurosParceladoFieldsDiv.style.display = 'none';
+                }
+            });
+            // Aciona o evento de 'change' uma vez para garantir o estado inicial correto
+            temJurosParceladoSelect.dispatchEvent(new Event('change'));
+        }
+    }
+}
+
+// --- Funções de Cálculo Específicas para Cada Opção ---
+
+/**
+ * Calcula e exibe a comparação de Rendimento vs. Parcelas. (Opção 1)
+ */
 function calcularOpcao1() {
     const valorTotal = getNumericInputValue("valorTotal");
     const parcelas = getIntInputValue("parcelas");
@@ -163,10 +330,10 @@ function calcularOpcao1() {
     const temJurosParcelado = getYesNoValue("temJurosParcelado");
 
     let valorVista = valorTotal * (1 - descontoVista);
-    let valorParceladoComJuros = valorTotal; 
+    let valorParceladoComJuros = valorTotal;
 
     if (temJurosParcelado === 'S') {
-        const tipoJurosParcelado = getYesNoValue("tipoJurosParcelado"); 
+        const tipoJurosParcelado = getYesNoValue("tipoJurosParcelado");
         const taxaJurosParcelado = getNumericInputValue("taxaJurosParcelado") / 100;
         valorParceladoComJuros = calcularValorParceladoComJuros(valorTotal, parcelas, taxaJurosParcelado, tipoJurosParcelado);
     }
@@ -178,17 +345,20 @@ function calcularOpcao1() {
     const valorEfetivoParcelado = valorParceladoComJuros - rendimentosAcumulados;
 
     resultadoDiv.innerHTML = `
-        <h3>[1] Rendimento vs Parcelas:</h3>
+        <h3>[1] Rendimento vs. Parcelas:</h3>
         <p>Valor total da compra: R$ ${valorTotal.toFixed(2)}</p>
         <p>Valor pagando à vista (com desconto): R$ ${valorVista.toFixed(2)}</p>
         <p>Valor pagando parcelado (com juros, se houver): R$ ${valorParceladoComJuros.toFixed(2)}</p>
-        <p>Rendimentos acumulados (se investir): R$ ${rendimentosAcumulados.toFixed(2)}</p>
+        <p>Rendimentos acumulados (se investir o que não foi gasto à vista): R$ ${rendimentosAcumulados.toFixed(2)}</p>
         <p>Valor efetivo pago parcelando (descontando rendimentos): R$ ${valorEfetivoParcelado.toFixed(2)}</p>
         ${simulacaoDetalhada}
         <strong>${valorVista < valorEfetivoParcelado ? "Compensa pagar à vista." : "Compensa parcelar."}</strong>
     `;
 }
 
+/**
+ * Calcula e exibe a comparação À Vista vs. Parcelas. (Opção 2)
+ */
 function calcularOpcao2() {
     const valorVista = getNumericInputValue("valorVista");
     const parcelas = getIntInputValue("parcelas");
@@ -203,16 +373,19 @@ function calcularOpcao2() {
     const valorEfetivoParcelado = totalParcelado - rendimentosAcumulados;
 
     resultadoDiv.innerHTML = `
-        <h3>[2] À vista vs Parcelas:</h3>
+        <h3>[2] À Vista vs. Parcelas:</h3>
         <p>Valor pagando à vista: R$ ${valorVista.toFixed(2)}</p>
         <p>Valor pagando parcelado: R$ ${totalParcelado.toFixed(2)}</p>
-        <p>Rendimentos acumulados (se investir): R$ ${rendimentosAcumulados.toFixed(2)}</p>
+        <p>Rendimentos acumulados (se investir o que não foi gasto à vista): R$ ${rendimentosAcumulados.toFixed(2)}</p>
         <p>Valor efetivo pago parcelando (descontando rendimentos): R$ ${valorEfetivoParcelado.toFixed(2)}</p>
         ${simulacaoDetalhada}
         <strong>${valorVista < valorEfetivoParcelado ? "Compensa pagar à vista." : "Compensa parcelar."}</strong>
     `;
 }
 
+/**
+ * Calcula e exibe a comparação de Parcelamento com Entrada vs. À Vista. (Opção 3)
+ */
 function calcularOpcao3() {
     const entrada = getNumericInputValue("entrada");
     const parcelas = getIntInputValue("parcelas");
@@ -228,6 +401,9 @@ function calcularOpcao3() {
     `;
 }
 
+/**
+ * Calcula e exibe a comparação entre duas opções de parcelamento. (Opção 4)
+ */
 function calcularOpcao4() {
     const parcelas1 = getIntInputValue("parcelas1");
     const valorParcela1 = getNumericInputValue("valorParcela1");
@@ -245,6 +421,9 @@ function calcularOpcao4() {
     `;
 }
 
+/**
+ * Calcula e exibe o impacto de atrasos em parcelas. (Opção 5)
+ */
 function calcularOpcao5() {
     const valorParcelaOriginal = getNumericInputValue("valorParcelaOriginal");
     const diasAtraso = getIntInputValue("diasAtraso");
@@ -259,6 +438,9 @@ function calcularOpcao5() {
     `;
 }
 
+/**
+ * Calcula e exibe a simulação com inflação (Valor Presente Líquido). (Opção 6)
+ */
 function calcularOpcao6() {
     const parcelas = getIntInputValue("parcelas");
     const valorParcela = getNumericInputValue("valorParcela");
@@ -275,13 +457,16 @@ function calcularOpcao6() {
     `;
 }
 
+/**
+ * Calcula e exibe a comparação com um investimento alternativo. (Opção 7)
+ */
 function calcularOpcao7() {
     const valorVista = getNumericInputValue("valorVista");
     const parcelas = getIntInputValue("parcelas");
     const valorParcela = getNumericInputValue("valorParcela");
     const taxaInvestimento = getNumericInputValue("taxaInvestimento") / 100;
 
-    let saldoInvestimento = valorVista;
+    let saldoInvestimento = valorVista; // O valor que seria pago à vista, agora investido
 
     let tabelaDetalhada = '<p>Detalhes do Investimento:</p><table><thead><tr><th>Mês</th><th>Saldo Inicial (R$)</th><th>Rendimento (R$)</th><th>Parcela Paga (R$)</th><th>Saldo Final (R$)</th></tr></thead><tbody>';
 
@@ -311,16 +496,18 @@ function calcularOpcao7() {
 }
 
 
-// --- Event Listeners ---
+// --- Gerenciamento de Eventos ---
 
+// Evento ao mudar a opção selecionada no dropdown
 selectOpcao.addEventListener("change", () => {
     const opcao = selectOpcao.value;
     criarCamposParaOpcao(opcao);
 });
 
+// Evento ao clicar no botão "Calcular"
 calcularBtn.addEventListener("click", () => {
     const opcao = selectOpcao.value;
-    resultadoDiv.innerHTML = "";
+    resultadoDiv.innerHTML = ""; // Limpa resultados anteriores
 
     if (opcao === "0") {
         resultadoDiv.innerHTML = "<p style='color: orange;'>Por favor, selecione uma opção de comparação antes de calcular.</p>";
@@ -328,6 +515,7 @@ calcularBtn.addEventListener("click", () => {
     }
 
     try {
+        // Usa um switch para chamar a função de cálculo correspondente à opção
         switch (opcao) {
             case "1":
                 calcularOpcao1();
@@ -353,15 +541,19 @@ calcularBtn.addEventListener("click", () => {
             default:
                 resultadoDiv.innerHTML = "<p>Opção ainda não implementada nesta interface.</p>";
         }
+        // Rola a página suavemente para a área de resultados
         resultadoDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (erro) {
-        resultadoDiv.innerHTML = `<p style="color: red;">Erro: ${erro.message}</p><p style="color: red;">Verifique se todos os campos obrigatórios foram preenchidos corretamente e se os valores são válidos.</p>`;
+        // Exibe mensagens de erro claras para o usuário
+        resultadoDiv.innerHTML = `<p style="color: red;"><strong>Erro: ${erro.message}</strong></p><p style="color: red;">Verifique se todos os campos obrigatórios foram preenchidos corretamente e se os valores são válidos.</p>`;
     }
 });
 
-// Inicializa os campos ao carregar a página e carrega as taxas
+// Executa funções quando o DOM estiver completamente carregado
 document.addEventListener("DOMContentLoaded", () => {
+    // Inicializa os campos de entrada com base na opção padrão do select
     criarCamposParaOpcao(selectOpcao.value);
+    // Carrega as taxas financeiras ao iniciar a página
     fetchSelicRate();
-    fetchIpcaAnnualRate(); // Chama a nova função para carregar o IPCA
+    fetchIpcaAnnualRate();
 });
