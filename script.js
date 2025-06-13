@@ -3,6 +3,7 @@ const selectOpcao = document.getElementById("opcao");
 const calcularBtn = document.getElementById("calcular");
 const resultadoDiv = document.getElementById("resultado");
 const inputContainer = document.getElementById("input-container");
+const selicRateSpan = document.getElementById("selic-rate"); // Novo span para a SELIC
 
 // --- Funções de Ajuda e Cálculos ---
 
@@ -37,6 +38,15 @@ function getIntInputValue(id) {
         throw new Error(`Valor inválido para o campo '${id}'.`);
     }
     return value;
+}
+
+// Função auxiliar para obter resposta 'S' ou 'N'
+function getYesNoValue(id) {
+    const element = document.getElementById(id);
+    if (!element) {
+        throw new Error(`O campo de seleção '${id}' não foi encontrado.`);
+    }
+    return element.value;
 }
 
 // Função para ajustar a taxa de rendimento com base no IR
@@ -79,6 +89,53 @@ function simularRendimento(qnt_parcelas, valor_parcela, taxa_mensal) {
     simulacaoDetalhada += '</tbody></table>';
     return { ganho, simulacaoDetalhada };
 }
+
+// Função para buscar e exibir a taxa SELIC
+async function fetchSelicRate() {
+    const selicApiUrl = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.11/dados/ultimos/1?formato=json";
+    try {
+        const response = await fetch(selicApiUrl);
+        if (!response.ok) {
+            throw new Error(`Erro ao buscar SELIC: ${response.statusText}`);
+        }
+        const data = await response.json();
+        if (data && data.length > 0 && data[0].valor) {
+            // A série 11 retorna a taxa diária. Precisamos anualizá-la para um contexto mais comum.
+            // Para simplificar, vou exibir o valor diário. Se for necessário anualizar, a lógica precisa ser mais precisa.
+            // O valor do BCB é percentual diário para a série 11. O mais comum é ter a taxa ao ano.
+            // No contexto brasileiro, Selic é sempre anualizada. A série 11 é diária.
+            // Uma aproximação comum para converter diária para anual (útil para taxa SELIC meta) é:
+            // (1 + taxa_diaria_decimal)^252 - 1 (dias úteis) ou (1 + taxa_diaria_decimal)^365 - 1 (dias corridos)
+            // Para a taxa SELIC divulgada oficialmente, ela já é anual. A série 11 é a taxa diária efetiva.
+            // Para mostrar a 'Selic atualizada' como uma taxa anual, podemos assumir que o 'valor' retornado
+            // pela API para a série 11 é a taxa acumulada do dia, que ao longo do ano formaria a meta.
+            // No entanto, para fins de exibir "a taxa SELIC atualizada", o mais correto é a taxa meta anual.
+            // A API de séries temporais do BCB (SGS) série 432: "Taxa de juros - Selic" (anual)
+            // https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json
+
+            // Vamos usar a série 432 para taxa anual, que é mais comum para o usuário final.
+            const selicAnualApiUrl = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json";
+            const responseAnual = await fetch(selicAnualApiUrl);
+            if (!responseAnual.ok) {
+                throw new Error(`Erro ao buscar SELIC anual: ${responseAnual.statusText}`);
+            }
+            const dataAnual = await responseAnual.json();
+
+            if (dataAnual && dataAnual.length > 0 && dataAnual[0].valor) {
+                const selicRate = parseFloat(dataAnual[0].valor);
+                selicRateSpan.textContent = `${selicRate.toFixed(2)}%`;
+            } else {
+                selicRateSpan.textContent = "N/A";
+            }
+        } else {
+            selicRateSpan.textContent = "N/A";
+        }
+    } catch (error) {
+        console.error("Erro ao carregar a taxa SELIC:", error);
+        selicRateSpan.textContent = "Erro ao carregar";
+    }
+}
+
 
 // --- Criação Dinâmica dos Campos de Entrada ---
 
@@ -199,14 +256,14 @@ function calcularOpcao1() {
     const parcelas = getIntInputValue("parcelas");
     let taxaRendimento = getNumericInputValue("taxaRendimento") / 100;
     const descontoVista = getNumericInputValue("descontoVista") / 100;
-    const considerarIR = document.getElementById("considerarIR").value;
-    const temJurosParcelado = document.getElementById("temJurosParcelado").value;
+    const considerarIR = getYesNoValue("considerarIR");
+    const temJurosParcelado = getYesNoValue("temJurosParcelado");
 
     let valorVista = valorTotal * (1 - descontoVista);
     let valorParceladoComJuros = valorTotal; // Inicializa com valorTotal
 
     if (temJurosParcelado === 'S') {
-        const tipoJurosParcelado = document.getElementById("tipoJurosParcelado").value;
+        const tipoJurosParcelado = getYesNoValue("tipoJurosParcelado"); // 'simples' ou 'composto'
         const taxaJurosParcelado = getNumericInputValue("taxaJurosParcelado") / 100;
         valorParceladoComJuros = calcularValorParceladoComJuros(valorTotal, parcelas, taxaJurosParcelado, tipoJurosParcelado);
     }
@@ -234,7 +291,7 @@ function calcularOpcao2() {
     const parcelas = getIntInputValue("parcelas");
     const valorParcela = getNumericInputValue("valorParcela");
     let taxaRendimento = getNumericInputValue("taxaRendimento") / 100;
-    const considerarIR = document.getElementById("considerarIR").value;
+    const considerarIR = getYesNoValue("considerarIR");
 
     const totalParcelado = parcelas * valorParcela;
     taxaRendimento = ajustarTaxaParaIR(taxaRendimento, parcelas, considerarIR);
@@ -362,6 +419,11 @@ calcularBtn.addEventListener("click", () => {
     const opcao = selectOpcao.value;
     resultadoDiv.innerHTML = ""; // Limpa resultados anteriores
 
+    if (opcao === "0") {
+        resultadoDiv.innerHTML = "<p style='color: orange;'>Por favor, selecione uma opção de comparação antes de calcular.</p>";
+        return;
+    }
+
     try {
         switch (opcao) {
             case "1":
@@ -395,7 +457,8 @@ calcularBtn.addEventListener("click", () => {
     }
 });
 
-// Inicializa os campos ao carregar a página com a opção padrão (opção 1)
+// Inicializa os campos ao carregar a página com a opção padrão (opção 0 ou 1) e carrega a SELIC
 document.addEventListener("DOMContentLoaded", () => {
-    criarCamposParaOpcao(selectOpcao.value);
+    criarCamposParaOpcao(selectOpcao.value); // Carrega os campos para a opção inicialmente selecionada (Selecione uma opção...)
+    fetchSelicRate(); // Carrega a taxa SELIC ao iniciar
 });
