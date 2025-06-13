@@ -3,46 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TaxCalcBR</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>TaxCalcBR: Simulador de Finanças</title> <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="favicon.ico" type="image/x-icon"> 
 </head>
 <body>
     <div class="main-container">
-        <div class="header">
-            <h1>TaxCalcBR: Simulador de Pagamento</h1>
-        </div>
-        <div class="form-container">
-            <form id="form-simulador">
+        <header class="header"> <h1>TaxCalcBR: Simulador de Pagamentos e Investimentos</h1> <p>Selecione uma opção abaixo para começar sua análise financeira.</p> </header>
+
+        <main class="form-container"> <form id="form-simulador">
                 <div class="form-group">
                     <label for="opcao">Escolha a comparação:</label>
-                    <select id="opcao">
-                        <option value="0">Selecione...</option>
-                        <option value="1">Rendimento x Parcelas</option>
-                        <option value="2">À vista x Parcelas</option>
-                        <option value="3">Entrada + Parcelas x À Vista</option>
+                    <select id="opcao" aria-describedby="opcao-description"> <option value="0">Selecione uma opção...</option> <option value="1">Rendimento vs. Parcelas (com juros e descontos)</option> <option value="2">À Vista vs. Parcelas (comparar valores)</option>
+                        <option value="3">Entrada + Parcelas vs. À Vista</option>
                         <option value="4">Comparar duas opções de parcelamento</option>
                         <option value="5">Impacto do atraso nas parcelas</option>
-                        <option value="6">Simulação com inflação</option>
+                        <option value="6">Simulação com inflação (Valor Presente Líquido)</option>
                         <option value="7">Comparar com investimento alternativo</option>
                     </select>
-                </div>
-                <div id="input-container">
-                    <!-- Inputs dinâmicos serão carregados aqui -->
-                </div>
+                    <small id="opcao-description" class="sr-only">Selecione o tipo de cálculo financeiro que você deseja realizar.</small> </div>
+                <div id="input-container" class="form-group"> </div>
                 <button type="button" id="calcular">Calcular</button>
             </form>
-        </div>
-        <div id="resultado" class="resultado"></div>
-    </div>
+        </main>
+
+        <section id="resultado" class="resultado" aria-live="polite"></section> </div>
+
     <footer class="footer">
         <p>Desenvolvido por Gabriel Ribeiro | &copy; 2025</p>
-        <div>
-            <a href="https://www.github.com/gabrielbribeiroo/" target="_blank"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/github/github-original.svg" alt="GitHub" width="30" height="30"></a>
-            <a href="mailto:gabrielbroliveira@gmail.com"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/google/google-original.svg" alt="Gmail" width="30" height="30"></a>
-            <a href="https://www.instagram.com/gabrielbribeiroo/" target="_blank"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png" alt="Instagram" style="width: 32px; height: 32px;"></a>
-            <a href="https://www.linkedin.com/in/gabriel-ribeiro1000/" target="_blank"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/linkedin/linkedin-original.svg" alt="LinkedIn" width="30" height="30"></a>
+        <div class="social-links"> <a href="https://www.github.com/gabrielbribeiroo/" target="_blank" rel="noopener noreferrer" aria-label="Visite meu perfil no GitHub"> <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/github/github-original.svg" alt="Ícone GitHub" width="30" height="30">
+            </a>
+            <a href="mailto:gabrielbroliveira@gmail.com" aria-label="Envie um e-mail para gabrielbroliveira@gmail.com">
+                <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/google/google-original.svg" alt="Ícone Gmail" width="30" height="30">
+            </a>
+            <a href="https://www.instagram.com/gabrielbribeiroo/" target="_blank" rel="noopener noreferrer" aria-label="Visite meu perfil no Instagram">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png" alt="Ícone Instagram" style="width: 32px; height: 32px;">
+            </a>
+            <a href="https://www.linkedin.com/in/gabriel-ribeiro1000/" target="_blank" rel="noopener noreferrer" aria-label="Visite meu perfil no LinkedIn">
+                <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/linkedin/linkedin-original.svg" alt="Ícone LinkedIn" width="30" height="30">
+            </a>
         </div>
     </footer>
     <script src="script.js"></script>
