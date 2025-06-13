@@ -263,3 +263,32 @@ button:active {
         font-size: 0.8rem;
     }
 }
+
+/* Adicione estes estilos para a seção de taxas */
+.financial-rates-info {
+    margin-top: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    background-color: #e6f2ff; /* Um fundo suave para as informações das taxas */
+    border-radius: var(--border-radius);
+    border: 1px solid #cce0ff;
+    text-align: center;
+}
+
+.financial-rates-info p {
+    margin-bottom: var(--spacing-xs);
+    font-size: 1.05rem;
+    color: var(--primary-dark-color);
+}
+
+.financial-rates-info span {
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.financial-rates-info small {
+    display: block;
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: var(--spacing-xs);
+}
