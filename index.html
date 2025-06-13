@@ -3,30 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TaxCalcBR: Simulador de Finanças</title> <link rel="stylesheet" href="styles.css">
+    <title>TaxCalcBR: Simulador de Finanças</title>
+    <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="icon" href="favicon.ico" type="image/x-icon"> 
 </head>
 <body>
     <div class="main-container">
-        <header class="header"> <h1>TaxCalcBR: Simulador de Pagamentos e Investimentos</h1> <p>Selecione uma opção abaixo para começar sua análise financeira.</p> <div class="selic-info">
-                <p>Taxa SELIC atual (ao ano): <span id="selic-rate">Carregando...</span></p>
+        <header class="header">
+            <h1>TaxCalcBR: Simulador de Pagamentos e Investimentos</h1>
+            <p>Selecione uma opção abaixo para começar sua análise financeira.</p>
+            <div class="financial-rates-info"> <p>Taxa SELIC atual (ao ano): <span id="selic-rate">Carregando...</span></p>
+                <p>IPCA acumulado (12 meses): <span id="ipca-rate">Carregando...</span></p>
                 <small>(Fonte: Banco Central do Brasil)</small>
             </div>
         </header>
 
-        <main class="form-container"> <form id="form-simulador">
+        <main class="form-container">
+            <form id="form-simulador">
                 <div class="form-group">
                     <label for="opcao">Escolha a comparação:</label>
-                    <select id="opcao" aria-describedby="opcao-description"> <option value="0">Selecione uma opção...</option> <option value="1">Rendimento vs. Parcelas (com juros e descontos)</option> <option value="2">À Vista vs. Parcelas (comparar valores)</option>
+                    <select id="opcao" aria-describedby="opcao-description">
+                        <option value="0">Selecione uma opção...</option>
+                        <option value="1">Rendimento vs. Parcelas (com juros e descontos)</option>
+                        <option value="2">À Vista vs. Parcelas (comparar valores)</option>
                         <option value="3">Entrada + Parcelas vs. À Vista</option>
                         <option value="4">Comparar duas opções de parcelamento</option>
                         <option value="5">Impacto do atraso nas parcelas</option>
                         <option value="6">Simulação com inflação (Valor Presente Líquido)</option>
                         <option value="7">Comparar com investimento alternativo</option>
                     </select>
-                    <small id="opcao-description" class="sr-only">Selecione o tipo de cálculo financeiro que você deseja realizar.</small> </div>
+                    <small id="opcao-description" class="sr-only">Selecione o tipo de cálculo financeiro que você deseja realizar.</small>
+                </div>
                 <div id="input-container" class="form-group">
                     </div>
                 <button type="button" id="calcular">Calcular</button>
