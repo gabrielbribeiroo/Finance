@@ -77,6 +77,9 @@ function getYesNoValue(id) {
  */
 function ajustarTaxaParaIR(taxa, qnt_parcelas, considerarIR) {
     if (considerarIR === 'S') {
+        // As alíquotas de IR para investimentos de renda fixa (tabela regressiva)
+        // são baseadas no tempo de aplicação. Aqui, estamos usando as parcelas
+        // como proxy para o tempo, o que é uma simplificação.
         if (qnt_parcelas <= 6) { // Até 180 dias
             return taxa * 0.775; // 22.5% de IR
         } else if (qnt_parcelas <= 12) { // De 181 a 360 dias
@@ -108,6 +111,8 @@ function calcularValorParceladoComJuros(valorInicial, qntParcelas, jurosMensais 
 
 /**
  * Simula os rendimentos acumulados de um valor ao longo das parcelas.
+ * A lógica é que o dinheiro que *não* foi pago à vista (ou seja, o valor das parcelas)
+ * poderia estar rendendo em um investimento.
  * @param {number} qnt_parcelas - Quantidade total de parcelas.
  * @param {number} valor_parcela - Valor de cada parcela.
  * @param {number} taxa_mensal - Taxa de rendimento mensal (decimal).
@@ -115,23 +120,13 @@ function calcularValorParceladoComJuros(valorInicial, qntParcelas, jurosMensais 
  */
 function simularRendimento(qnt_parcelas, valor_parcela, taxa_mensal) {
     let ganho = 0;
-    // O ganho é simulado sobre o saldo devedor que "não foi pago" à vista
-    // No contexto de comparação, o dinheiro que seria pago à vista é o capital
-    // sobre o qual o rendimento ocorre enquanto se paga em parcelas.
-    // Assim, a "dívida" inicial para cálculo do rendimento é o valor total nominal da compra.
+    // O capital inicial para rendimento é o valor total nominal das parcelas.
     let capitalInvestidoInicial = valor_parcela * qnt_parcelas;
     let simulacaoDetalhada = '<p>Detalhes do Rendimento:</p><table><thead><tr><th>Parcela</th><th>Capital p/ Rendimento (R$)</th><th>Rendimento (R$)</th></tr></thead><tbody>';
 
     for (let i = 1; i <= qnt_parcelas; i++) {
         let rendimentoMensal = capitalInvestidoInicial * taxa_mensal;
         ganho += rendimentoMensal;
-        // Se a lógica for de "rendimento sobre o que eu ainda não paguei", a base diminui
-        // A simulação anterior usava 'divida' decrescente, mas para "rendimentos acumulados"
-        // no contexto de um valor que poderia estar investido, a lógica mais comum
-        // seria o rendimento sobre o saldo que NÃO foi usado para pagar à vista.
-        // A lógica do Python aqui parece ser o rendimento sobre o saldo devedor restante
-        // se considerarmos que o dinheiro "parado" em dívida poderia render.
-        // Vamos manter a lógica do Python de rendimento sobre o saldo decrescente da dívida.
         simulacaoDetalhada += `<tr><td>${i}</td><td>${capitalInvestidoInicial.toFixed(2)}</td><td>${rendimentoMensal.toFixed(2)}</td></tr>`;
         capitalInvestidoInicial -= valor_parcela; // A base para o rendimento decresce a cada parcela paga
     }
@@ -253,12 +248,19 @@ function criarCamposParaOpcao(opcao) {
                 </label>
             `;
             break;
-        case "3": // Parcelamento com entrada
+        case "3": // Parcelamento com entrada (AGORA COM CAMPOS DE INVESTIMENTO)
             htmlContent = `
                 <label for="entrada">Valor da entrada (R$): <input type="number" id="entrada" step="0.01" required></label>
                 <label for="parcelas">Número de parcelas: <input type="number" id="parcelas" min="1" required></label>
                 <label for="valorParcela">Valor de cada parcela (R$): <input type="number" id="valorParcela" step="0.01" required></label>
                 <label for="valorVista">Valor da compra à vista (R$): <input type="number" id="valorVista" step="0.01" required></label>
+                <label for="taxaRendimento">Taxa de rendimento mensal (%): <input type="number" id="taxaRendimento" step="0.01" required></label>
+                <label for="considerarIR">Considerar imposto de renda sobre os rendimentos? 
+                    <select id="considerarIR">
+                        <option value="N">Não</option>
+                        <option value="S">Sim</option>
+                    </select>
+                </label>
             `;
             break;
         case "4": // Comparar duas opções de parcelamento
@@ -385,19 +387,70 @@ function calcularOpcao2() {
 
 /**
  * Calcula e exibe a comparação de Parcelamento com Entrada vs. À Vista. (Opção 3)
+ * Agora inclui simulação de investimento.
  */
 function calcularOpcao3() {
     const entrada = getNumericInputValue("entrada");
     const parcelas = getIntInputValue("parcelas");
     const valorParcela = getNumericInputValue("valorParcela");
     const valorVista = getNumericInputValue("valorVista");
+    let taxaRendimento = getNumericInputValue("taxaRendimento") / 100; // Nova entrada
+    const considerarIR = getYesNoValue("considerarIR"); // Nova entrada
+
     const totalParcelado = entrada + parcelas * valorParcela;
 
+    // Simulação de rendimento sobre o valor que seria pago à vista, mas que foi investido
+    // A base para o rendimento é o valor total da compra à vista.
+    taxaRendimento = ajustarTaxaParaIR(taxaRendimento, parcelas, considerarIR);
+    
+    // A lógica de simular rendimento aqui é um pouco diferente da Opção 2.
+    // Na Opção 2, o valor "investido" é o que seria pago à vista.
+    // Aqui, o valor "investido" é o valor à vista, e as parcelas são "pagas" desse investimento.
+    let saldoInvestimento = valorVista;
+    let rendimentoTotal = 0;
+    let tabelaDetalhada = '<p>Detalhes do Investimento (se o valor à vista fosse investido):</p><table><thead><tr><th>Mês</th><th>Saldo Inicial (R$)</th><th>Rendimento (R$)</th><th>Parcela Paga (R$)</th><th>Saldo Final (R$)</th></tr></thead><tbody>';
+
+    for (let i = 1; i <= parcelas; i++) {
+        const rendimentoMes = saldoInvestimento * taxaRendimento;
+        const saldoInicialMes = saldoInvestimento;
+        
+        saldoInvestimento += rendimentoMes;
+        rendimentoTotal += rendimentoMes; // Acumula o rendimento total
+        
+        if (i === 1) { // A entrada é paga no mês 1
+            saldoInvestimento -= entrada;
+        }
+        saldoInvestimento -= valorParcela; // Paga a parcela mensal
+
+        tabelaDetalhada += `<tr>
+            <td>${i}</td>
+            <td>${saldoInicialMes.toFixed(2)}</td>
+            <td>${rendimentoMes.toFixed(2)}</td>
+            <td>${(i === 1 ? entrada : 0) + valorParcela.toFixed(2)}</td>
+            <td>${saldoInvestimento.toFixed(2)}</td>
+        </tr>`;
+    }
+    tabelaDetalhada += '</tbody></table>';
+
+    // O custo efetivo do parcelamento com entrada, considerando os rendimentos que você *deixou de ganhar*
+    // ou o benefício de ter o dinheiro rendendo.
+    // Se o saldo final do investimento for positivo, significa que o parcelamento foi vantajoso.
+    // Se for negativo, o custo efetivo foi maior do que o valor à vista.
+    const valorEfetivoParceladoComEntrada = valorVista - saldoInvestimento;
+
+
     resultadoDiv.innerHTML = `
-        <h3>[3] Parcelamento com Entrada:</h3>
-        <p>Total parcelado com entrada: R$ ${totalParcelado.toFixed(2)}</p>
-        <p>Valor à vista: R$ ${valorVista.toFixed(2)}</p>
-        <strong>${totalParcelado < valorVista ? "Compensa pagar com entrada e parcelas." : "Compensa pagar à vista."}</strong>
+        <h3>[3] Parcelamento com Entrada vs. À Vista:</h3>
+        <p>Valor da entrada: R$ ${entrada.toFixed(2)}</p>
+        <p>Valor de cada parcela: R$ ${valorParcela.toFixed(2)}</p>
+        <p>Número de parcelas: ${parcelas}</p>
+        <p>Total nominal parcelado (entrada + parcelas): R$ ${totalParcelado.toFixed(2)}</p>
+        <p>Valor da compra à vista: R$ ${valorVista.toFixed(2)}</p>
+        <p>Rendimento total gerado pelo investimento do valor à vista: R$ ${rendimentoTotal.toFixed(2)}</p>
+        <p>Saldo final do investimento (após pagar entrada e parcelas): R$ ${saldoInvestimento.toFixed(2)}</p>
+        <p>Custo efetivo do parcelamento com entrada (considerando rendimentos): R$ ${valorEfetivoParceladoComEntrada.toFixed(2)}</p>
+        ${tabelaDetalhada}
+        <strong>${saldoInvestimento >= 0 ? "Compensa parcelar com entrada e investir o valor à vista." : "Compensa pagar à vista."}</strong>
     `;
 }
 
