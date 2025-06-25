@@ -147,12 +147,13 @@ function simularRendimento(qnt_parcelas, valor_parcela, taxa_mensal) {
 
 /**
  * Converte a taxa informada pelo usuário (ou selecionada automaticamente) para uma taxa mensal decimal.
- * @param {string} tipoTaxa - Tipo da taxa ('custom-anual', 'custom-mensal', 'selic', 'ipca', 'cdi', 'inflacao').
- * @param {number} valorTaxaInput - O valor numérico da taxa (se personalizada).
+ * @param {string} tipoTaxa - Tipo da taxa ('custom-anual', 'custom-mensal', 'selic', 'ipca', 'cdi', 'indice-percentual').
+ * @param {number} valorTaxaInput - O valor numérico da taxa (se personalizada ou percentual do índice).
+ * @param {string} indiceBase - O índice base para 'indice-percentual' (SELIC, IPCA, CDI).
  * @returns {number} A taxa mensal decimal convertida.
  * @throws {Error} Se o tipo de taxa for desconhecido ou valores de SELIC/IPCA não estiverem carregados.
  */
-function getConvertedMonthlyRate(tipoTaxa, valorTaxaInput) {
+function getConvertedMonthlyRate(tipoTaxa, valorTaxaInput, indiceBase = '') {
     let taxaAnualDecimal = 0;
     let taxaMensalDecimal = 0;
 
@@ -179,8 +180,25 @@ function getConvertedMonthlyRate(tipoTaxa, valorTaxaInput) {
             taxaAnualDecimal = (selicAtual - 0.1) / 100; // CDI geralmente 0.1% abaixo da SELIC meta anual.
             taxaMensalDecimal = Math.pow(1 + taxaAnualDecimal, 1/12) - 1;
             break;
-        case 'inflacao': // Usado na Opção 6
-            // Na Opção 6, o HTML já espera uma inflação mensal estimada.
+        case 'indice-percentual':
+            let taxaBaseAnual = 0;
+            if (indiceBase === 'selic') {
+                if (selicAtual === 0) throw new Error("Taxa SELIC (para % do índice) não carregada. Tente novamente.");
+                taxaBaseAnual = selicAtual / 100;
+            } else if (indiceBase === 'ipca') {
+                if (ipcaAtual === 0) throw new Error("Taxa IPCA (para % do índice) não carregada. Tente novamente.");
+                taxaBaseAnual = ipcaAtual / 100;
+            } else if (indiceBase === 'cdi') {
+                if (selicAtual === 0) throw new Error("Taxa SELIC (para CDI) não carregada. Tente novamente.");
+                taxaBaseAnual = (selicAtual - 0.1) / 100;
+            } else {
+                throw new Error("Índice base para 'Índice + Percentual' não especificado ou inválido.");
+            }
+            // Calcula a taxa anual do investimento como (percentual_informado_pelo_usuario / 100) * taxa_base_anual
+            taxaAnualDecimal = (valorTaxaInput / 100) * taxaBaseAnual;
+            taxaMensalDecimal = Math.pow(1 + taxaAnualDecimal, 1/12) - 1;
+            break;
+        case 'inflacao': // Usado na Opção 6, é sempre uma taxa mensal customizada
             taxaMensalDecimal = valorTaxaInput / 100;
             break;
         default:
@@ -230,7 +248,7 @@ async function fetchIpcaAnnualRate() {
         const data = await response.json();
 
         if (data && data.length === 12) {
-            let ipcaAcumuladoCalc = 1; // Usar nome diferente para evitar conflito com a global
+            let ipcaAcumuladoCalc = 1;
             data.forEach(item => {
                 const valorMensal = parseFloat(item.valor) / 100;
                 ipcaAcumuladoCalc *= (1 + valorMensal);
@@ -253,11 +271,10 @@ async function fetchIpcaAnnualRate() {
  * Gera o HTML para o fieldset de configuração de taxa de rendimento/inflação.
  * @param {string} idPrefix - Prefixo para os IDs dos elementos (ex: 'rendimento' ou 'inflacao').
  * @param {string} titleContext - Texto adicional para o título da seção (ex: 'do Rendimento').
- * @param {boolean} showIRSelect - Se o select de IR deve ser mostrado (agora é select, não checkbox).
+ * @param {boolean} showIRSelect - Se o select de IR deve ser mostrado.
  * @returns {string} O HTML gerado.
  */
 function generateYieldRateHtml(idPrefix, titleContext, showIRSelect) {
-    // Define um valor padrão mais coerente para taxas customizadas
     const defaultTaxaValue = (idPrefix === 'inflacao') ? '0.5' : ''; 
     const defaultTaxaPlaceholder = (idPrefix === 'inflacao') ? 'Ex: 0.5 (mensal)' : 'Ex: 10.5 (anual)';
 
@@ -273,7 +290,16 @@ function generateYieldRateHtml(idPrefix, titleContext, showIRSelect) {
                     <option value="selic">SELIC (Carregada Automaticamente)</option>
                     <option value="ipca">IPCA (Carregada Automaticamente)</option>
                     <option value="cdi">CDI (SELIC - 0.1%)</option>
+                    <option value="indice-percentual">Índice + Percentual (%)</option>
                     ` : ''}
+                </select>
+            </div>
+            <div class="form-group" id="${idPrefix}IndiceBaseGroup" style="display: none;">
+                <label for="${idPrefix}IndiceBase">Índice Base:</label>
+                <select id="${idPrefix}IndiceBase">
+                    <option value="cdi">CDI</option>
+                    <option value="selic">SELIC</option>
+                    <option value="ipca">IPCA</option>
                 </select>
             </div>
             <div class="form-group">
@@ -303,16 +329,19 @@ function setupYieldRateListeners(idPrefix) {
     const tipoTaxaSelect = document.getElementById(`${idPrefix}TipoTaxa`);
     const valorTaxaInput = document.getElementById(`${idPrefix}ValorTaxa`);
     const taxaInfoText = document.getElementById(`${idPrefix}TaxaInfoText`);
+    const indiceBaseGroup = document.getElementById(`${idPrefix}IndiceBaseGroup`);
+    const indiceBaseSelect = document.getElementById(`${idPrefix}IndiceBase`);
 
     if (!tipoTaxaSelect || !valorTaxaInput || !taxaInfoText) {
-        // console.warn(`Elementos de taxa para prefixo "${idPrefix}" não encontrados.`);
         return; // Campos não existem para esta opção, sai da função
     }
 
-    tipoTaxaSelect.addEventListener('change', () => {
+    const updateTaxaFields = () => {
         const selectedTaxaType = tipoTaxaSelect.value;
-        // Não limpa o valor aqui, permite que o valor padrão ou digitado persista se for "custom"
+        valorTaxaInput.value = ''; // Limpa o valor para evitar confusão entre tipos
         taxaInfoText.textContent = ''; // Limpa a info
+        valorTaxaInput.readOnly = false; // Padrão é editável
+        indiceBaseGroup.style.display = 'none'; // Esconde o índice base por padrão
 
         // Define o valor e o estado de readOnly com base no tipo de taxa
         switch (selectedTaxaType) {
@@ -320,7 +349,6 @@ function setupYieldRateListeners(idPrefix) {
                 if (selicAtual === 0) {
                     taxaInfoText.textContent = "SELIC não carregada. Tente novamente ou escolha personalizada.";
                     valorTaxaInput.readOnly = false;
-                    valorTaxaInput.value = ''; // Limpa se não carregou
                 } else {
                     valorTaxaInput.value = selicAtual.toFixed(2);
                     valorTaxaInput.readOnly = true;
@@ -331,7 +359,6 @@ function setupYieldRateListeners(idPrefix) {
                 if (ipcaAtual === 0) {
                     taxaInfoText.textContent = "IPCA não carregado. Tente novamente ou escolha personalizada.";
                     valorTaxaInput.readOnly = false;
-                    valorTaxaInput.value = ''; // Limpa se não carregou
                 } else {
                     valorTaxaInput.value = ipcaAtual.toFixed(2);
                     valorTaxaInput.readOnly = true;
@@ -342,30 +369,58 @@ function setupYieldRateListeners(idPrefix) {
                 if (selicAtual === 0) {
                     taxaInfoText.textContent = "SELIC (para CDI) não carregada. Tente novamente ou escolha personalizada.";
                     valorTaxaInput.readOnly = false;
-                    valorTaxaInput.value = ''; // Limpa se não carregou
                 } else {
-                    const cdiRate = (selicAtual - 0.1); // CDI geralmente 0.1% abaixo da SELIC meta
+                    const cdiRate = (selicAtual - 0.1);
                     valorTaxaInput.value = cdiRate.toFixed(2);
                     valorTaxaInput.readOnly = true;
                     taxaInfoText.textContent = `CDI estimado: ${cdiRate.toFixed(2)}% ao ano (SELIC - 0.1%).`;
                 }
                 break;
+            case 'indice-percentual':
+                indiceBaseGroup.style.display = 'block';
+                valorTaxaInput.placeholder = "Ex: 100 (para 100% do índice)";
+                taxaInfoText.textContent = "Informe a porcentagem do índice base.";
+                // Adiciona um listener para atualizar a info quando o índice base mudar
+                if (indiceBaseSelect) {
+                    indiceBaseSelect.addEventListener('change', updateTaxaInfoForIndicePercentual);
+                    // Dispara para inicializar o texto de info
+                    updateTaxaInfoForIndicePercentual(); 
+                }
+                break;
             case 'custom-mensal':
-                valorTaxaInput.readOnly = false;
                 valorTaxaInput.placeholder = "Ex: 0.5 (mensal)";
                 taxaInfoText.textContent = "Insira a taxa mensal em %.";
-                valorTaxaInput.value = ''; // Limpa para customizada
                 break;
             case 'custom-anual':
             default: // Default para custom-anual
-                valorTaxaInput.readOnly = false;
                 valorTaxaInput.placeholder = "Ex: 10.5 (anual)";
                 taxaInfoText.textContent = "Insira a taxa anual em %.";
-                valorTaxaInput.value = ''; // Limpa para customizada
                 break;
         }
-    });
+    };
 
+    const updateTaxaInfoForIndicePercentual = () => {
+        const selectedIndiceBase = indiceBaseSelect.value;
+        let baseRate = 0;
+        let baseName = '';
+        if (selectedIndiceBase === 'selic') {
+            baseRate = selicAtual;
+            baseName = 'SELIC';
+        } else if (selectedIndiceBase === 'ipca') {
+            baseRate = ipcaAtual;
+            baseName = 'IPCA';
+        } else if (selectedIndiceBase === 'cdi') {
+            baseRate = selicAtual > 0 ? (selicAtual - 0.1) : 0;
+            baseName = 'CDI';
+        }
+        if (baseRate > 0) {
+            taxaInfoText.textContent = `Índice ${baseName} atual: ${baseRate.toFixed(2)}%.`;
+        } else {
+            taxaInfoText.textContent = `Carregando índice ${baseName}...`;
+        }
+    };
+
+    tipoTaxaSelect.addEventListener('change', updateTaxaFields);
     // Dispara o evento change uma vez para inicializar o estado correto
     tipoTaxaSelect.dispatchEvent(new Event('change'));
 }
@@ -583,10 +638,14 @@ function criarCamposParaOpcao(opcao) {
 function getAdjustedYieldRate(prefix, numMeses) {
     const tipoTaxa = getStringSelectValue(`${prefix}TipoTaxa`);
     const valorTaxa = getNumericInputValue(`${prefix}ValorTaxa`);
-    // Alterado para getStringSelectValue para o select de IR
-    const considerarIR = getStringSelectValue(`${prefix}ConsiderarIR`);
+    const considerarIR = document.getElementById(`${prefix}ConsiderarIR`) ? getStringSelectValue(`${prefix}ConsiderarIR`) : 'N'; // Pega do select
 
-    let taxaMensalDecimal = getConvertedMonthlyRate(tipoTaxa, valorTaxa);
+    let indiceBase = '';
+    if (tipoTaxa === 'indice-percentual') {
+        indiceBase = getStringSelectValue(`${prefix}IndiceBase`);
+    }
+
+    let taxaMensalDecimal = getConvertedMonthlyRate(tipoTaxa, valorTaxa, indiceBase);
     taxaMensalDecimal = ajustarTaxaParaIR(taxaMensalDecimal, numMeses, considerarIR);
 
     return { taxaMensal: taxaMensalDecimal, considerarIR: considerarIR };
