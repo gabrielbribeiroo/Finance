@@ -24,9 +24,13 @@
 
         <main class="form-container">
             <form id="form-simulador">
-                <fieldset class="form-section"> <legend class="section-title">Escolha sua simulação</legend> <div class="form-group">
-                        <label for="opcao">Tipo de Comparação:</label> <select id="opcao" aria-describedby="opcao-description">
-                            <option value="0" disabled selected>Selecione uma opção...</option> <option value="1">Rendimento vs. Parcelas (com juros e descontos)</option>
+                <fieldset class="form-section">
+                    <legend class="section-title">Escolha sua simulação</legend>
+                    <div class="form-group">
+                        <label for="opcao">Tipo de Comparação:</label>
+                        <select id="opcao" aria-describedby="opcao-description">
+                            <option value="0" disabled selected>Selecione uma opção...</option>
+                            <option value="1">Rendimento vs. Parcelas (com juros e descontos)</option>
                             <option value="2">À Vista vs. Parcelas (comparar valores)</option>
                             <option value="3">Entrada + Parcelas vs. À Vista</option>
                             <option value="4">Comparar duas opções de parcelamento</option>
@@ -39,7 +43,9 @@
                 </fieldset>
 
                 <fieldset id="input-container" class="form-section dynamic-inputs">
-                    <legend class="section-title">Detalhes da Simulação</legend> <p class="placeholder-text">Selecione uma opção acima para ver os campos.</p> </fieldset>
+                    <legend class="section-title">Detalhes da Simulação</legend>
+                    <p class="placeholder-text">Selecione uma opção acima para ver os campos.</p>
+                </fieldset>
 
                 <button type="button" id="calcular">Calcular</button>
             </form>
