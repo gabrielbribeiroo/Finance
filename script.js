@@ -6,6 +6,10 @@ const inputContainer = document.getElementById("input-container");
 const selicRateSpan = document.getElementById("selic-rate");
 const ipcaRateSpan = document.getElementById("ipca-rate");
 
+// Variáveis globais para armazenar as taxas carregadas do BCB
+let selicAtual = 0; // Armazenará o valor da SELIC anual
+let ipcaAtual = 0; // Armazenará o valor do IPCA acumulado em 12 meses
+
 // --- Funções de Ajuda e Validação de Entrada ---
 
 /**
@@ -25,11 +29,16 @@ function limparCampos() {
 function getNumericInputValue(id) {
     const element = document.getElementById(id);
     if (!element || element.value === "") {
-        throw new Error(`O campo "${element ? element.labels[0].textContent.replace(':', '').trim() : id}" é obrigatório.`);
+        // Tenta encontrar o label associado para uma mensagem de erro mais amigável
+        const label = document.querySelector(`label[for="${id}"]`) || element.closest('.form-group')?.querySelector('label');
+        const fieldName = label ? label.textContent.replace(':', '').trim() : id;
+        throw new Error(`O campo "${fieldName}" é obrigatório.`);
     }
     const value = parseFloat(element.value.replace(',', '.'));
     if (isNaN(value)) {
-        throw new Error(`Valor inválido para o campo "${element.labels[0].textContent.replace(':', '').trim()}".`);
+        const label = document.querySelector(`label[for="${id}"]`) || element.closest('.form-group')?.querySelector('label');
+        const fieldName = label ? label.textContent.replace(':', '').trim() : id;
+        throw new Error(`Valor inválido para o campo "${fieldName}".`);
     }
     return value;
 }
@@ -43,22 +52,26 @@ function getNumericInputValue(id) {
 function getIntInputValue(id) {
     const element = document.getElementById(id);
     if (!element || element.value === "") {
-        throw new Error(`O campo "${element ? element.labels[0].textContent.replace(':', '').trim() : id}" é obrigatório.`);
+        const label = document.querySelector(`label[for="${id}"]`) || element.closest('.form-group')?.querySelector('label');
+        const fieldName = label ? label.textContent.replace(':', '').trim() : id;
+        throw new Error(`O campo "${fieldName}" é obrigatório.`);
     }
     const value = parseInt(element.value);
     if (isNaN(value)) {
-        throw new Error(`Valor inválido para o campo "${element.labels[0].textContent.replace(':', '').trim()}".`);
+        const label = document.querySelector(`label[for="${id}"]`) || element.closest('.form-group')?.querySelector('label');
+        const fieldName = label ? label.textContent.replace(':', '').trim() : id;
+        throw new Error(`Valor inválido para o campo "${fieldName}".`);
     }
     return value;
 }
 
 /**
- * Obtém o valor de um select (geralmente 'S' ou 'N').
+ * Obtém o valor de um select (geralmente uma string de tipo de taxa ou 'S'/'N').
  * @param {string} id - O ID do elemento select.
  * @returns {string} O valor selecionado.
  * @throws {Error} Se o elemento não for encontrado.
  */
-function getYesNoValue(id) {
+function getStringSelectValue(id) {
     const element = document.getElementById(id);
     if (!element) {
         throw new Error(`O campo de seleção "${id}" não foi encontrado.`);
@@ -69,28 +82,27 @@ function getYesNoValue(id) {
 // --- Funções de Cálculo Financeiro ---
 
 /**
- * Ajusta a taxa de rendimento mensal com base nas alíquotas de Imposto de Renda.
- * @param {number} taxa - Taxa de rendimento mensal original (decimal).
- * @param {number} qnt_parcelas - Quantidade de parcelas (para determinar a alíquota de IR).
+ * Ajusta a taxa de rendimento (mensal) com base nas alíquotas de Imposto de Renda.
+ * @param {number} taxaMensal - Taxa de rendimento mensal original (decimal).
+ * @param {number} meses - Quantidade de meses de aplicação/parcelas (para determinar a alíquota de IR).
  * @param {string} considerarIR - 'S' para considerar IR, 'N' caso contrário.
  * @returns {number} A taxa ajustada.
  */
-function ajustarTaxaParaIR(taxa, qnt_parcelas, considerarIR) {
+function ajustarTaxaParaIR(taxaMensal, meses, considerarIR) {
     if (considerarIR === 'S') {
-        // As alíquotas de IR para investimentos de renda fixa (tabela regressiva)
-        // são baseadas no tempo de aplicação. Aqui, estamos usando as parcelas
-        // como proxy para o tempo, o que é uma simplificação.
-        if (qnt_parcelas <= 6) { // Até 180 dias
-            return taxa * 0.775; // 22.5% de IR
-        } else if (qnt_parcelas <= 12) { // De 181 a 360 dias
-            return taxa * 0.80; // 20% de IR
-        } else if (qnt_parcelas <= 24) { // De 361 a 720 dias
-            return taxa * 0.825; // 17.5% de IR
+        let aliquotaIR = 0;
+        if (meses <= 6) { // Até 180 dias
+            aliquotaIR = 0.225; // 22.5% de IR
+        } else if (meses <= 12) { // De 181 a 360 dias
+            aliquotaIR = 0.20; // 20% de IR
+        } else if (meses <= 24) { // De 361 a 720 dias
+            aliquotaIR = 0.175; // 17.5% de IR
         } else { // Acima de 720 dias
-            return taxa * 0.85; // 15% de IR
+            aliquotaIR = 0.15; // 15% de IR
         }
+        return taxaMensal * (1 - aliquotaIR);
     }
-    return taxa;
+    return taxaMensal;
 }
 
 /**
@@ -120,7 +132,6 @@ function calcularValorParceladoComJuros(valorInicial, qntParcelas, jurosMensais 
  */
 function simularRendimento(qnt_parcelas, valor_parcela, taxa_mensal) {
     let ganho = 0;
-    // O capital inicial para rendimento é o valor total nominal das parcelas.
     let capitalInvestidoInicial = valor_parcela * qnt_parcelas;
     let simulacaoDetalhada = '<p>Detalhes do Rendimento:</p><table><thead><tr><th>Parcela</th><th>Capital p/ Rendimento (R$)</th><th>Rendimento (R$)</th></tr></thead><tbody>';
 
@@ -128,10 +139,54 @@ function simularRendimento(qnt_parcelas, valor_parcela, taxa_mensal) {
         let rendimentoMensal = capitalInvestidoInicial * taxa_mensal;
         ganho += rendimentoMensal;
         simulacaoDetalhada += `<tr><td>${i}</td><td>${capitalInvestidoInicial.toFixed(2)}</td><td>${rendimentoMensal.toFixed(2)}</td></tr>`;
-        capitalInvestidoInicial -= valor_parcela; // A base para o rendimento decresce a cada parcela paga
+        capitalInvestidoInicial -= valor_parcela;
     }
     simulacaoDetalhada += '</tbody></table>';
     return { ganho, simulacaoDetalhada };
+}
+
+/**
+ * Converte a taxa informada pelo usuário (ou selecionada automaticamente) para uma taxa mensal decimal.
+ * @param {string} tipoTaxa - Tipo da taxa ('custom-anual', 'custom-mensal', 'selic', 'ipca', 'cdi', 'inflacao').
+ * @param {number} valorTaxaInput - O valor numérico da taxa (se personalizada).
+ * @returns {number} A taxa mensal decimal convertida.
+ * @throws {Error} Se o tipo de taxa for desconhecido ou valores de SELIC/IPCA não estiverem carregados.
+ */
+function getConvertedMonthlyRate(tipoTaxa, valorTaxaInput) {
+    let taxaAnualDecimal = 0;
+    let taxaMensalDecimal = 0;
+
+    switch (tipoTaxa) {
+        case 'custom-anual':
+            taxaAnualDecimal = valorTaxaInput / 100;
+            taxaMensalDecimal = Math.pow(1 + taxaAnualDecimal, 1/12) - 1;
+            break;
+        case 'custom-mensal':
+            taxaMensalDecimal = valorTaxaInput / 100;
+            break;
+        case 'selic':
+            if (selicAtual === 0) throw new Error("Taxa SELIC não carregada. Tente novamente.");
+            taxaAnualDecimal = selicAtual / 100;
+            taxaMensalDecimal = Math.pow(1 + taxaAnualDecimal, 1/12) - 1;
+            break;
+        case 'ipca':
+            if (ipcaAtual === 0) throw new Error("Taxa IPCA não carregada. Tente novamente.");
+            taxaAnualDecimal = ipcaAtual / 100; // IPCA é acumulado em 12 meses, então já é uma taxa anualizada.
+            taxaMensalDecimal = Math.pow(1 + taxaAnualDecimal, 1/12) - 1;
+            break;
+        case 'cdi':
+            if (selicAtual === 0) throw new Error("Taxa SELIC (para CDI) não carregada. Tente novamente.");
+            taxaAnualDecimal = (selicAtual - 0.1) / 100; // CDI geralmente 0.1% abaixo da SELIC meta anual.
+            taxaMensalDecimal = Math.pow(1 + taxaAnualDecimal, 1/12) - 1;
+            break;
+        case 'inflacao': // Usado na Opção 6
+            // Na Opção 6, o HTML já espera uma inflação mensal estimada.
+            taxaMensalDecimal = valorTaxaInput / 100;
+            break;
+        default:
+            throw new Error("Tipo de taxa de rendimento desconhecido.");
+    }
+    return taxaMensalDecimal;
 }
 
 
@@ -141,7 +196,6 @@ function simularRendimento(qnt_parcelas, valor_parcela, taxa_mensal) {
  * Busca e exibe a taxa SELIC meta anual do Banco Central do Brasil.
  */
 async function fetchSelicRate() {
-    // Série 432: Taxa de juros - Selic (anual)
     const selicAnualApiUrl = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json";
     try {
         const responseAnual = await fetch(selicAnualApiUrl);
@@ -151,8 +205,8 @@ async function fetchSelicRate() {
         const dataAnual = await responseAnual.json();
 
         if (dataAnual && dataAnual.length > 0 && dataAnual[0].valor) {
-            const selicRate = parseFloat(dataAnual[0].valor);
-            selicRateSpan.textContent = `${selicRate.toFixed(2)}%`;
+            selicAtual = parseFloat(dataAnual[0].valor); // Armazena na variável global
+            selicRateSpan.textContent = `${selicAtual.toFixed(2)}%`;
         } else {
             selicRateSpan.textContent = "N/A";
         }
@@ -166,7 +220,6 @@ async function fetchSelicRate() {
  * Busca os valores mensais do IPCA e calcula o acumulado em 12 meses.
  */
 async function fetchIpcaAnnualRate() {
-    // Série 433: IPCA - Índice Nacional de Preços ao Consumidor Amplo (Mensal)
     const ipcaMensalApiUrl = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados/ultimos/12?formato=json";
 
     try {
@@ -177,13 +230,13 @@ async function fetchIpcaAnnualRate() {
         const data = await response.json();
 
         if (data && data.length === 12) {
-            let ipcaAcumulado = 1;
+            let ipcaAcumuladoCalc = 1; // Usar nome diferente para evitar conflito com a global
             data.forEach(item => {
-                const valorMensal = parseFloat(item.valor) / 100; // Converte para decimal
-                ipcaAcumulado *= (1 + valorMensal);
+                const valorMensal = parseFloat(item.valor) / 100;
+                ipcaAcumuladoCalc *= (1 + valorMensal);
             });
-            ipcaAcumulado = (ipcaAcumulado - 1) * 100; // Converte de volta para porcentagem
-            ipcaRateSpan.textContent = `${ipcaAcumulado.toFixed(2)}%`;
+            ipcaAtual = (ipcaAcumuladoCalc - 1) * 100; // Armazena na variável global
+            ipcaRateSpan.textContent = `${ipcaAtual.toFixed(2)}%`;
         } else {
             ipcaRateSpan.textContent = "N/A (dados incompletos)";
         }
@@ -194,7 +247,129 @@ async function fetchIpcaAnnualRate() {
 }
 
 
-// --- Criação Dinâmica dos Campos de Entrada do Formulário ---
+// --- Funções de Criação e Gerenciamento de Campos Dinâmicos ---
+
+/**
+ * Gera o HTML para o fieldset de configuração de taxa de rendimento/inflação.
+ * @param {string} idPrefix - Prefixo para os IDs dos elementos (ex: 'rendimento' ou 'inflacao').
+ * @param {string} titleContext - Texto adicional para o título da seção (ex: 'do Rendimento').
+ * @param {boolean} showIRSelect - Se o select de IR deve ser mostrado (agora é select, não checkbox).
+ * @returns {string} O HTML gerado.
+ */
+function generateYieldRateHtml(idPrefix, titleContext, showIRSelect) {
+    // Define um valor padrão mais coerente para taxas customizadas
+    const defaultTaxaValue = (idPrefix === 'inflacao') ? '0.5' : ''; 
+    const defaultTaxaPlaceholder = (idPrefix === 'inflacao') ? 'Ex: 0.5 (mensal)' : 'Ex: 10.5 (anual)';
+
+    return `
+        <fieldset class="form-section yield-rate-inputs">
+            <legend class="section-title">Configuração da Taxa ${titleContext}</legend>
+            <div class="form-group">
+                <label for="${idPrefix}TipoTaxa">Tipo de Taxa:</label>
+                <select id="${idPrefix}TipoTaxa" class="tipo-taxa-select">
+                    <option value="custom-anual">Anual (Personalizada)</option>
+                    <option value="custom-mensal">Mensal (Personalizada)</option>
+                    ${idPrefix !== 'inflacao' ? `
+                    <option value="selic">SELIC (Carregada Automaticamente)</option>
+                    <option value="ipca">IPCA (Carregada Automaticamente)</option>
+                    <option value="cdi">CDI (SELIC - 0.1%)</option>
+                    ` : ''}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="${idPrefix}ValorTaxa">Valor da Taxa (%):</label>
+                <input type="number" id="${idPrefix}ValorTaxa" class="valor-taxa-input" step="0.01" min="0" placeholder="${defaultTaxaPlaceholder}" value="${defaultTaxaValue}">
+                <small id="${idPrefix}TaxaInfoText" class="taxa-info-text"></small>
+            </div>
+            ${showIRSelect ? `
+            <div class="form-group" id="${idPrefix}IrOptionGroup">
+                <label for="${idPrefix}ConsiderarIR">Considerar Imposto de Renda (IR) sobre o rendimento?</label>
+                <select id="${idPrefix}ConsiderarIR">
+                    <option value="N">Não</option>
+                    <option value="S">Sim</option>
+                </select>
+                <small>O IR é aplicado sobre o rendimento bruto, conforme tabela regressiva de renda fixa.</small>
+            </div>
+            ` : ''}
+        </fieldset>
+    `;
+}
+
+/**
+ * Configura os listeners para os campos de seleção e valor de taxa dinâmica.
+ * @param {string} idPrefix - Prefixo dos IDs dos elementos (ex: 'rendimento' ou 'inflacao').
+ */
+function setupYieldRateListeners(idPrefix) {
+    const tipoTaxaSelect = document.getElementById(`${idPrefix}TipoTaxa`);
+    const valorTaxaInput = document.getElementById(`${idPrefix}ValorTaxa`);
+    const taxaInfoText = document.getElementById(`${idPrefix}TaxaInfoText`);
+
+    if (!tipoTaxaSelect || !valorTaxaInput || !taxaInfoText) {
+        // console.warn(`Elementos de taxa para prefixo "${idPrefix}" não encontrados.`);
+        return; // Campos não existem para esta opção, sai da função
+    }
+
+    tipoTaxaSelect.addEventListener('change', () => {
+        const selectedTaxaType = tipoTaxaSelect.value;
+        // Não limpa o valor aqui, permite que o valor padrão ou digitado persista se for "custom"
+        taxaInfoText.textContent = ''; // Limpa a info
+
+        // Define o valor e o estado de readOnly com base no tipo de taxa
+        switch (selectedTaxaType) {
+            case 'selic':
+                if (selicAtual === 0) {
+                    taxaInfoText.textContent = "SELIC não carregada. Tente novamente ou escolha personalizada.";
+                    valorTaxaInput.readOnly = false;
+                    valorTaxaInput.value = ''; // Limpa se não carregou
+                } else {
+                    valorTaxaInput.value = selicAtual.toFixed(2);
+                    valorTaxaInput.readOnly = true;
+                    taxaInfoText.textContent = `SELIC atual: ${selicAtual.toFixed(2)}% ao ano.`;
+                }
+                break;
+            case 'ipca':
+                if (ipcaAtual === 0) {
+                    taxaInfoText.textContent = "IPCA não carregado. Tente novamente ou escolha personalizada.";
+                    valorTaxaInput.readOnly = false;
+                    valorTaxaInput.value = ''; // Limpa se não carregou
+                } else {
+                    valorTaxaInput.value = ipcaAtual.toFixed(2);
+                    valorTaxaInput.readOnly = true;
+                    taxaInfoText.textContent = `IPCA acumulado (12 meses): ${ipcaAtual.toFixed(2)}%.`;
+                }
+                break;
+            case 'cdi':
+                if (selicAtual === 0) {
+                    taxaInfoText.textContent = "SELIC (para CDI) não carregada. Tente novamente ou escolha personalizada.";
+                    valorTaxaInput.readOnly = false;
+                    valorTaxaInput.value = ''; // Limpa se não carregou
+                } else {
+                    const cdiRate = (selicAtual - 0.1); // CDI geralmente 0.1% abaixo da SELIC meta
+                    valorTaxaInput.value = cdiRate.toFixed(2);
+                    valorTaxaInput.readOnly = true;
+                    taxaInfoText.textContent = `CDI estimado: ${cdiRate.toFixed(2)}% ao ano (SELIC - 0.1%).`;
+                }
+                break;
+            case 'custom-mensal':
+                valorTaxaInput.readOnly = false;
+                valorTaxaInput.placeholder = "Ex: 0.5 (mensal)";
+                taxaInfoText.textContent = "Insira a taxa mensal em %.";
+                valorTaxaInput.value = ''; // Limpa para customizada
+                break;
+            case 'custom-anual':
+            default: // Default para custom-anual
+                valorTaxaInput.readOnly = false;
+                valorTaxaInput.placeholder = "Ex: 10.5 (anual)";
+                taxaInfoText.textContent = "Insira a taxa anual em %.";
+                valorTaxaInput.value = ''; // Limpa para customizada
+                break;
+        }
+    });
+
+    // Dispara o evento change uma vez para inicializar o estado correto
+    tipoTaxaSelect.dispatchEvent(new Event('change'));
+}
+
 
 /**
  * Cria dinamicamente os campos de entrada no formulário de acordo com a opção selecionada.
@@ -203,108 +378,183 @@ async function fetchIpcaAnnualRate() {
 function criarCamposParaOpcao(opcao) {
     limparCampos();
 
+    // Adiciona o placeholder inicial (agora no JS)
+    inputContainer.innerHTML = '<p class="placeholder-text">Selecione uma opção acima para ver os campos.</p>';
+
     let htmlContent = '';
+    let needsYieldListeners = false; // Flag para saber se precisa configurar os listeners de rendimento
+    let yieldPrefix = ''; // Para guardar o prefixo da taxa (rendimento, inflacao, investimento)
+
     switch (opcao) {
         case "1": // Rendimento vs Parcelas
             htmlContent = `
-                <label for="valorTotal">Valor total da compra (R$): <input type="number" id="valorTotal" step="0.01" required></label>
-                <label for="parcelas">Número de parcelas: <input type="number" id="parcelas" min="1" required></label>
-                <label for="taxaRendimento">Taxa de rendimento mensal (%): <input type="number" id="taxaRendimento" step="0.01" required></label>
-                <label for="descontoVista">Porcentagem de desconto à vista (se houver): <input type="number" id="descontoVista" step="0.01" value="0"></label>
-                <label for="temJurosParcelado">Há juros em pagar parcelado? 
+                <div class="form-group">
+                    <label for="valorTotal">Valor total da compra (R$):</label>
+                    <input type="number" id="valorTotal" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="parcelas">Número de parcelas:</label>
+                    <input type="number" id="parcelas" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="descontoVista">Porcentagem de desconto à vista (se houver):</label>
+                    <input type="number" id="descontoVista" step="0.01" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="temJurosParcelado">Há juros em pagar parcelado?</label>
                     <select id="temJurosParcelado">
                         <option value="N">Não</option>
                         <option value="S">Sim</option>
                     </select>
-                </label>
+                </div>
                 <div id="jurosParceladoFields" style="display:none;">
-                    <label for="tipoJurosParcelado">Tipo de juros:
+                    <div class="form-group">
+                        <label for="tipoJurosParcelado">Tipo de juros:</label>
                         <select id="tipoJurosParcelado">
                             <option value="simples">Simples</option>
                             <option value="composto">Compostos</option>
                         </select>
-                    </label>
-                    <label for="taxaJurosParcelado">Taxa de juros mensal (%): <input type="number" id="taxaJurosParcelado" step="0.01"></label>
+                    </div>
+                    <div class="form-group">
+                        <label for="taxaJurosParcelado">Taxa de juros mensal (%):</label>
+                        <input type="number" id="taxaJurosParcelado" step="0.01">
+                    </div>
                 </div>
-                <label for="considerarIR">Considerar imposto de renda sobre os rendimentos? 
-                    <select id="considerarIR">
-                        <option value="N">Não</option>
-                        <option value="S">Sim</option>
-                    </select>
-                </label>
+                ${generateYieldRateHtml('rendimento', 'do Rendimento', true)}
             `;
+            needsYieldListeners = true;
+            yieldPrefix = 'rendimento';
             break;
         case "2": // À vista vs Parcelas
             htmlContent = `
-                <label for="valorVista">Valor da compra à vista (R$): <input type="number" id="valorVista" step="0.01" required></label>
-                <label for="parcelas">Número de parcelas: <input type="number" id="parcelas" min="1" required></label>
-                <label for="valorParcela">Valor de cada parcela (R$): <input type="number" id="valorParcela" step="0.01" required></label>
-                <label for="taxaRendimento">Taxa de rendimento mensal (%): <input type="number" id="taxaRendimento" step="0.01" required></label>
-                <label for="considerarIR">Considerar imposto de renda sobre os rendimentos? 
-                    <select id="considerarIR">
-                        <option value="N">Não</option>
-                        <option value="S">Sim</option>
-                    </select>
-                </label>
+                <div class="form-group">
+                    <label for="valorVista">Valor da compra à vista (R$):</label>
+                    <input type="number" id="valorVista" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="parcelas">Número de parcelas:</label>
+                    <input type="number" id="parcelas" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="valorParcela">Valor de cada parcela (R$):</label>
+                    <input type="number" id="valorParcela" step="0.01" required>
+                </div>
+                ${generateYieldRateHtml('rendimento', 'do Rendimento', true)}
             `;
+            needsYieldListeners = true;
+            yieldPrefix = 'rendimento';
             break;
         case "3": // Parcelamento com entrada (AGORA COM CAMPOS DE INVESTIMENTO)
             htmlContent = `
-                <label for="entrada">Valor da entrada (R$): <input type="number" id="entrada" step="0.01" required></label>
-                <label for="parcelas">Número de parcelas: <input type="number" id="parcelas" min="1" required></label>
-                <label for="valorParcela">Valor de cada parcela (R$): <input type="number" id="valorParcela" step="0.01" required></label>
-                <label for="valorVista">Valor da compra à vista (R$): <input type="number" id="valorVista" step="0.01" required></label>
-                <label for="taxaRendimento">Taxa de rendimento mensal (%): <input type="number" id="taxaRendimento" step="0.01" required></label>
-                <label for="considerarIR">Considerar imposto de renda sobre os rendimentos? 
-                    <select id="considerarIR">
-                        <option value="N">Não</option>
-                        <option value="S">Sim</option>
-                    </select>
-                </label>
+                <div class="form-group">
+                    <label for="entrada">Valor da entrada (R$):</label>
+                    <input type="number" id="entrada" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="parcelas">Número de parcelas:</label>
+                    <input type="number" id="parcelas" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="valorParcela">Valor de cada parcela (R$):</label>
+                    <input type="number" id="valorParcela" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="valorVista">Valor da compra à vista (R$):</label>
+                    <input type="number" id="valorVista" step="0.01" required>
+                </div>
+                ${generateYieldRateHtml('rendimento', 'do Rendimento', true)}
             `;
+            needsYieldListeners = true;
+            yieldPrefix = 'rendimento';
             break;
         case "4": // Comparar duas opções de parcelamento
             htmlContent = `
                 <h3>Primeira opção:</h3>
-                <label for="parcelas1">Número de parcelas: <input type="number" id="parcelas1" min="1" required></label>
-                <label for="valorParcela1">Valor de cada parcela (R$): <input type="number" id="valorParcela1" step="0.01" required></label>
+                <div class="form-group">
+                    <label for="parcelas1">Número de parcelas:</label>
+                    <input type="number" id="parcelas1" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="valorParcela1">Valor de cada parcela (R$):</label>
+                    <input type="number" id="valorParcela1" step="0.01" required>
+                </div>
                 <h3>Segunda opção:</h3>
-                <label for="parcelas2">Número de parcelas: <input type="number" id="parcelas2" min="1" required></label>
-                <label for="valorParcela2">Valor de cada parcela (R$): <input type="number" id="valorParcela2" step="0.01" required></label>
+                <div class="form-group">
+                    <label for="parcelas2">Número de parcelas:</label>
+                    <input type="number" id="parcelas2" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="valorParcela2">Valor de cada parcela (R$):</label>
+                    <input type="number" id="valorParcela2" step="0.01" required>
+                </div>
             `;
             break;
         case "5": // Impacto de atrasos em parcelas
             htmlContent = `
-                <label for="valorParcelaOriginal">Valor da parcela original (R$): <input type="number" id="valorParcelaOriginal" step="0.01" required></label>
-                <label for="diasAtraso">Dias de atraso: <input type="number" id="diasAtraso" required></label>
-                <label for="multa">Multa por atraso (%): <input type="number" id="multa" step="0.01" required></label>
-                <label for="jurosDiarios">Juros diários por atraso (%): <input type="number" id="jurosDiarios" step="0.01" required></label>
+                <div class="form-group">
+                    <label for="valorParcelaOriginal">Valor da parcela original (R$):</label>
+                    <input type="number" id="valorParcelaOriginal" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="diasAtraso">Dias de atraso:</label>
+                    <input type="number" id="diasAtraso" required>
+                </div>
+                <div class="form-group">
+                    <label for="multa">Multa por atraso (%):</label>
+                    <input type="number" id="multa" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="jurosDiarios">Juros diários por atraso (%):</label>
+                    <input type="number" id="jurosDiarios" step="0.01" required>
+                </div>
             `;
             break;
         case "6": // Simulação com inflação
             htmlContent = `
-                <label for="parcelas">Número de parcelas: <input type="number" id="parcelas" min="1" required></label>
-                <label for="valorParcela">Valor de cada parcela (R$): <input type="number" id="valorParcela" step="0.01" required></label>
-                <label for="inflacao">Inflação mensal estimada (%): <input type="number" id="inflacao" step="0.01" required></label>
+                <div class="form-group">
+                    <label for="parcelas">Número de parcelas:</label>
+                    <input type="number" id="parcelas" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="valorParcela">Valor de cada parcela (R$):</label>
+                    <input type="number" id="valorParcela" step="0.01" required>
+                </div>
+                ${generateYieldRateHtml('inflacao', 'da Inflação', false)}
             `;
+            needsYieldListeners = true;
+            yieldPrefix = 'inflacao';
             break;
         case "7": // Comparar com investimento alternativo
             htmlContent = `
-                <label for="valorVista">Valor da compra à vista (R$): <input type="number" id="valorVista" step="0.01" required></label>
-                <label for="parcelas">Número de parcelas: <input type="number" id="parcelas" min="1" required></label>
-                <label for="valorParcela">Valor de cada parcela (R$): <input type="number" id="valorParcela" step="0.01" required></label>
-                <label for="taxaInvestimento">Taxa de rendimento mensal do investimento alternativo (%): <input type="number" id="taxaInvestimento" step="0.01" required></label>
+                <div class="form-group">
+                    <label for="valorVista">Valor da compra à vista (R$):</label>
+                    <input type="number" id="valorVista" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="parcelas">Número de parcelas:</label>
+                    <input type="number" id="parcelas" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="valorParcela">Valor de cada parcela (R$):</label>
+                    <input type="number" id="valorParcela" step="0.01" required>
+                </div>
+                ${generateYieldRateHtml('investimento', 'do Investimento', true)}
             `;
+            needsYieldListeners = true;
+            yieldPrefix = 'investimento';
+            break;
+        default:
+            htmlContent = '<p class="placeholder-text">Selecione uma opção acima para ver os campos.</p>';
             break;
     }
     inputContainer.innerHTML = htmlContent;
 
-    // Adiciona listener para a seleção de juros parcelados na Opção 1
+    // Configura listeners para campos específicos que sempre existirão se a opção for selecionada
     if (opcao === "1") {
         const temJurosParceladoSelect = document.getElementById("temJurosParcelado");
         const jurosParceladoFieldsDiv = document.getElementById("jurosParceladoFields");
 
-        if (temJurosParceladoSelect) {
+        if (temJurosParceladoSelect && jurosParceladoFieldsDiv) {
             temJurosParceladoSelect.addEventListener('change', () => {
                 if (temJurosParceladoSelect.value === 'S') {
                     jurosParceladoFieldsDiv.style.display = 'block';
@@ -312,13 +562,36 @@ function criarCamposParaOpcao(opcao) {
                     jurosParceladoFieldsDiv.style.display = 'none';
                 }
             });
-            // Aciona o evento de 'change' uma vez para garantir o estado inicial correto
-            temJurosParceladoSelect.dispatchEvent(new Event('change'));
+            temJurosParceladoSelect.dispatchEvent(new Event('change')); // Trigger initial state
         }
+    }
+
+    if (needsYieldListeners) {
+        setupYieldRateListeners(yieldPrefix);
     }
 }
 
+
 // --- Funções de Cálculo Específicas para Cada Opção ---
+
+/**
+ * Funcao auxiliar para obter a taxa de rendimento convertida e ajustada para IR.
+ * @param {string} prefix - O prefixo dos IDs dos campos de taxa ('rendimento', 'inflacao', 'investimento').
+ * @param {number} numMeses - O número total de meses/parcelas.
+ * @returns {{taxaMensal: number, considerarIR: string}} Objeto com a taxa mensal ajustada e se IR foi considerado ('S' ou 'N').
+ */
+function getAdjustedYieldRate(prefix, numMeses) {
+    const tipoTaxa = getStringSelectValue(`${prefix}TipoTaxa`);
+    const valorTaxa = getNumericInputValue(`${prefix}ValorTaxa`);
+    // Alterado para getStringSelectValue para o select de IR
+    const considerarIR = getStringSelectValue(`${prefix}ConsiderarIR`);
+
+    let taxaMensalDecimal = getConvertedMonthlyRate(tipoTaxa, valorTaxa);
+    taxaMensalDecimal = ajustarTaxaParaIR(taxaMensalDecimal, numMeses, considerarIR);
+
+    return { taxaMensal: taxaMensalDecimal, considerarIR: considerarIR };
+}
+
 
 /**
  * Calcula e exibe a comparação de Rendimento vs. Parcelas. (Opção 1)
@@ -326,24 +599,22 @@ function criarCamposParaOpcao(opcao) {
 function calcularOpcao1() {
     const valorTotal = getNumericInputValue("valorTotal");
     const parcelas = getIntInputValue("parcelas");
-    let taxaRendimento = getNumericInputValue("taxaRendimento") / 100;
     const descontoVista = getNumericInputValue("descontoVista") / 100;
-    const considerarIR = getYesNoValue("considerarIR");
-    const temJurosParcelado = getYesNoValue("temJurosParcelado");
+    const temJurosParcelado = getStringSelectValue("temJurosParcelado");
 
     let valorVista = valorTotal * (1 - descontoVista);
     let valorParceladoComJuros = valorTotal;
 
     if (temJurosParcelado === 'S') {
-        const tipoJurosParcelado = getYesNoValue("tipoJurosParcelado");
+        const tipoJurosParcelado = getStringSelectValue("tipoJurosParcelado");
         const taxaJurosParcelado = getNumericInputValue("taxaJurosParcelado") / 100;
         valorParceladoComJuros = calcularValorParceladoComJuros(valorTotal, parcelas, taxaJurosParcelado, tipoJurosParcelado);
     }
 
     const valorParcela = valorParceladoComJuros / parcelas;
-    taxaRendimento = ajustarTaxaParaIR(taxaRendimento, parcelas, considerarIR);
+    const { taxaMensal: taxaRendimentoAjustada, considerarIR: irConsiderado } = getAdjustedYieldRate('rendimento', parcelas);
 
-    const { ganho: rendimentosAcumulados, simulacaoDetalhada } = simularRendimento(parcelas, valorParcela, taxaRendimento);
+    const { ganho: rendimentosAcumulados, simulacaoDetalhada } = simularRendimento(parcelas, valorParcela, taxaRendimentoAjustada);
     const valorEfetivoParcelado = valorParceladoComJuros - rendimentosAcumulados;
 
     resultadoDiv.innerHTML = `
@@ -351,6 +622,7 @@ function calcularOpcao1() {
         <p>Valor total da compra: R$ ${valorTotal.toFixed(2)}</p>
         <p>Valor pagando à vista (com desconto): R$ ${valorVista.toFixed(2)}</p>
         <p>Valor pagando parcelado (com juros, se houver): R$ ${valorParceladoComJuros.toFixed(2)}</p>
+        <p>Taxa de rendimento utilizada (após IR${irConsiderado === 'S' ? ' SIM' : ' NÃO'}): ${(taxaRendimentoAjustada * 100).toFixed(4)}% ao mês</p>
         <p>Rendimentos acumulados (se investir o que não foi gasto à vista): R$ ${rendimentosAcumulados.toFixed(2)}</p>
         <p>Valor efetivo pago parcelando (descontando rendimentos): R$ ${valorEfetivoParcelado.toFixed(2)}</p>
         ${simulacaoDetalhada}
@@ -365,19 +637,18 @@ function calcularOpcao2() {
     const valorVista = getNumericInputValue("valorVista");
     const parcelas = getIntInputValue("parcelas");
     const valorParcela = getNumericInputValue("valorParcela");
-    let taxaRendimento = getNumericInputValue("taxaRendimento") / 100;
-    const considerarIR = getYesNoValue("considerarIR");
-
     const totalParcelado = parcelas * valorParcela;
-    taxaRendimento = ajustarTaxaParaIR(taxaRendimento, parcelas, considerarIR);
 
-    const { ganho: rendimentosAcumulados, simulacaoDetalhada } = simularRendimento(parcelas, valorParcela, taxaRendimento);
+    const { taxaMensal: taxaRendimentoAjustada, considerarIR: irConsiderado } = getAdjustedYieldRate('rendimento', parcelas);
+
+    const { ganho: rendimentosAcumulados, simulacaoDetalhada } = simularRendimento(parcelas, valorParcela, taxaRendimentoAjustada);
     const valorEfetivoParcelado = totalParcelado - rendimentosAcumulados;
 
     resultadoDiv.innerHTML = `
         <h3>[2] À Vista vs. Parcelas:</h3>
         <p>Valor pagando à vista: R$ ${valorVista.toFixed(2)}</p>
         <p>Valor pagando parcelado: R$ ${totalParcelado.toFixed(2)}</p>
+        <p>Taxa de rendimento utilizada (após IR${irConsiderado === 'S' ? ' SIM' : ' NÃO'}): ${(taxaRendimentoAjustada * 100).toFixed(4)}% ao mês</p>
         <p>Rendimentos acumulados (se investir o que não foi gasto à vista): R$ ${rendimentosAcumulados.toFixed(2)}</p>
         <p>Valor efetivo pago parcelando (descontando rendimentos): R$ ${valorEfetivoParcelado.toFixed(2)}</p>
         ${simulacaoDetalhada}
@@ -387,55 +658,43 @@ function calcularOpcao2() {
 
 /**
  * Calcula e exibe a comparação de Parcelamento com Entrada vs. À Vista. (Opção 3)
- * Agora inclui simulação de investimento.
  */
 function calcularOpcao3() {
     const entrada = getNumericInputValue("entrada");
     const parcelas = getIntInputValue("parcelas");
     const valorParcela = getNumericInputValue("valorParcela");
     const valorVista = getNumericInputValue("valorVista");
-    let taxaRendimento = getNumericInputValue("taxaRendimento") / 100; // Nova entrada
-    const considerarIR = getYesNoValue("considerarIR"); // Nova entrada
-
     const totalParcelado = entrada + parcelas * valorParcela;
 
-    // Simulação de rendimento sobre o valor que seria pago à vista, mas que foi investido
-    // A base para o rendimento é o valor total da compra à vista.
-    taxaRendimento = ajustarTaxaParaIR(taxaRendimento, parcelas, considerarIR);
+    const { taxaMensal: taxaRendimentoAjustada, considerarIR: irConsiderado } = getAdjustedYieldRate('rendimento', parcelas);
     
-    // A lógica de simular rendimento aqui é um pouco diferente da Opção 2.
-    // Na Opção 2, o valor "investido" é o que seria pago à vista.
-    // Aqui, o valor "investido" é o valor à vista, e as parcelas são "pagas" desse investimento.
     let saldoInvestimento = valorVista;
-    let rendimentoTotal = 0;
-    let tabelaDetalhada = '<p>Detalhes do Investimento (se o valor à vista fosse investido):</p><table><thead><tr><th>Mês</th><th>Saldo Inicial (R$)</th><th>Rendimento (R$)</th><th>Parcela Paga (R$)</th><th>Saldo Final (R$)</th></tr></thead><tbody>';
+    let rendimentoTotalAcumulado = 0;
+    let tabelaDetalhada = '<p>Detalhes do Investimento (se o valor à vista fosse investido):</p><table><thead><tr><th>Mês</th><th>Saldo Inicial (R$)</th><th>Rendimento Mês (R$)</th><th>Valor Pago Mês (R$)</th><th>Saldo Final (R$)</th></tr></thead><tbody>';
 
     for (let i = 1; i <= parcelas; i++) {
-        const rendimentoMes = saldoInvestimento * taxaRendimento;
+        const rendimentoMes = saldoInvestimento * taxaRendimentoAjustada;
         const saldoInicialMes = saldoInvestimento;
         
         saldoInvestimento += rendimentoMes;
-        rendimentoTotal += rendimentoMes; // Acumula o rendimento total
+        rendimentoTotalAcumulado += rendimentoMes;
         
+        let valorPagoNoMes = valorParcela;
         if (i === 1) { // A entrada é paga no mês 1
-            saldoInvestimento -= entrada;
+            valorPagoNoMes += entrada;
         }
-        saldoInvestimento -= valorParcela; // Paga a parcela mensal
+        saldoInvestimento -= valorPagoNoMes;
 
         tabelaDetalhada += `<tr>
             <td>${i}</td>
             <td>${saldoInicialMes.toFixed(2)}</td>
             <td>${rendimentoMes.toFixed(2)}</td>
-            <td>${(i === 1 ? entrada : 0) + valorParcela.toFixed(2)}</td>
+            <td>${valorPagoNoMes.toFixed(2)}</td>
             <td>${saldoInvestimento.toFixed(2)}</td>
         </tr>`;
     }
     tabelaDetalhada += '</tbody></table>';
 
-    // O custo efetivo do parcelamento com entrada, considerando os rendimentos que você *deixou de ganhar*
-    // ou o benefício de ter o dinheiro rendendo.
-    // Se o saldo final do investimento for positivo, significa que o parcelamento foi vantajoso.
-    // Se for negativo, o custo efetivo foi maior do que o valor à vista.
     const valorEfetivoParceladoComEntrada = valorVista - saldoInvestimento;
 
 
@@ -446,7 +705,8 @@ function calcularOpcao3() {
         <p>Número de parcelas: ${parcelas}</p>
         <p>Total nominal parcelado (entrada + parcelas): R$ ${totalParcelado.toFixed(2)}</p>
         <p>Valor da compra à vista: R$ ${valorVista.toFixed(2)}</p>
-        <p>Rendimento total gerado pelo investimento do valor à vista: R$ ${rendimentoTotal.toFixed(2)}</p>
+        <p>Taxa de rendimento utilizada (após IR${irConsiderado === 'S' ? ' SIM' : ' NÃO'}): ${(taxaRendimentoAjustada * 100).toFixed(4)}% ao mês</p>
+        <p>Rendimento total gerado pelo investimento do valor à vista: R$ ${rendimentoTotalAcumulado.toFixed(2)}</p>
         <p>Saldo final do investimento (após pagar entrada e parcelas): R$ ${saldoInvestimento.toFixed(2)}</p>
         <p>Custo efetivo do parcelamento com entrada (considerando rendimentos): R$ ${valorEfetivoParceladoComEntrada.toFixed(2)}</p>
         ${tabelaDetalhada}
@@ -497,15 +757,21 @@ function calcularOpcao5() {
 function calcularOpcao6() {
     const parcelas = getIntInputValue("parcelas");
     const valorParcela = getNumericInputValue("valorParcela");
-    const inflacao = getNumericInputValue("inflacao") / 100;
+    
+    // Para inflação, a função getAdjustedYieldRate com prefixo 'inflacao'
+    // já retorna a taxa mensal que queremos usar como taxa de desconto.
+    const { taxaMensal: inflacaoMensalAjustada } = getAdjustedYieldRate('inflacao', parcelas);
 
     let valorTotalInflacao = 0;
     for (let i = 1; i <= parcelas; i++) {
-        valorTotalInflacao += valorParcela / Math.pow(1 + inflacao, i);
+        valorTotalInflacao += valorParcela / Math.pow(1 + inflacaoMensalAjustada, i);
     }
 
     resultadoDiv.innerHTML = `
         <h3>[6] Simulação com Inflação:</h3>
+        <p>Valor de cada parcela: R$ ${valorParcela.toFixed(2)}</p>
+        <p>Número de parcelas: ${parcelas}</p>
+        <p>Taxa de inflação mensal utilizada: ${(inflacaoMensalAjustada * 100).toFixed(4)}%</p>
         <p>Valor total considerando a inflação (valor presente líquido): R$ ${valorTotalInflacao.toFixed(2)}</p>
     `;
 }
@@ -517,14 +783,15 @@ function calcularOpcao7() {
     const valorVista = getNumericInputValue("valorVista");
     const parcelas = getIntInputValue("parcelas");
     const valorParcela = getNumericInputValue("valorParcela");
-    const taxaInvestimento = getNumericInputValue("taxaInvestimento") / 100;
+    
+    const { taxaMensal: taxaInvestimentoAjustada, considerarIR: irConsiderado } = getAdjustedYieldRate('investimento', parcelas);
 
-    let saldoInvestimento = valorVista; // O valor que seria pago à vista, agora investido
+    let saldoInvestimento = valorVista;
 
     let tabelaDetalhada = '<p>Detalhes do Investimento:</p><table><thead><tr><th>Mês</th><th>Saldo Inicial (R$)</th><th>Rendimento (R$)</th><th>Parcela Paga (R$)</th><th>Saldo Final (R$)</th></tr></thead><tbody>';
 
     for (let i = 1; i <= parcelas; i++) {
-        const rendimento = saldoInvestimento * taxaInvestimento;
+        const rendimento = saldoInvestimento * taxaInvestimentoAjustada;
         const saldoInicialMes = saldoInvestimento;
         
         saldoInvestimento += rendimento;
@@ -542,6 +809,10 @@ function calcularOpcao7() {
 
     resultadoDiv.innerHTML = `
         <h3>[7] Comparar com Investimento Alternativo:</h3>
+        <p>Valor da compra à vista: R$ ${valorVista.toFixed(2)}</p>
+        <p>Valor de cada parcela: R$ ${valorParcela.toFixed(2)}</p>
+        <p>Número de parcelas: ${parcelas}</p>
+        <p>Taxa de investimento utilizada (após IR${irConsiderado === 'S' ? ' SIM' : ' NÃO'}): ${(taxaInvestimentoAjustada * 100).toFixed(4)}% ao mês</p>
         <p>Saldo final se você investir o valor à vista e pagar em parcelas: R$ ${saldoInvestimento.toFixed(2)}</p>
         ${tabelaDetalhada}
         <strong>${saldoInvestimento > 0 ? "Investir e parcelar é vantajoso (você termina com dinheiro extra)." : "Pagar à vista é mais seguro (evita dívidas ou perdas)."}</strong>
