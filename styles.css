@@ -66,13 +66,67 @@ body {
     color: #666;
 }
 
+/* Financial Rates Info Section */
+.financial-rates-info {
+    margin-top: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    background-color: #e6f2ff; /* Um fundo suave para as informações das taxas */
+    border-radius: var(--border-radius);
+    border: 1px solid #cce0ff;
+    text-align: center;
+}
+
+.financial-rates-info p {
+    margin-bottom: var(--spacing-xs);
+    font-size: 1.05rem;
+    color: var(--primary-dark-color);
+}
+
+.financial-rates-info span {
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.financial-rates-info small {
+    display: block;
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: var(--spacing-xs);
+}
+
 /* Form Styling */
 .form-container {
     margin-bottom: var(--spacing-lg);
 }
 
+/* New: Styles for fieldset as form sections */
+.form-section {
+    border: 1px solid var(--border-color); /* Subtle border for fieldset */
+    border-radius: var(--border-radius);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg); /* Spacing between form sections */
+    /* Ensure flex display if labels/inputs need to align horizontally */
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md); /* Space between form-groups within the fieldset */
+}
+
+/* New: Styles for legend as section title */
+.section-title {
+    font-size: 1.3rem; /* Larger title for sections */
+    font-weight: 700;
+    color: var(--primary-color);
+    padding: 0 var(--spacing-xs); /* Padding to not "stick" to the fieldset border */
+    background-color: var(--background-card); /* Background for the legend */
+    display: table; /* To make the background cover only the text */
+    margin-bottom: var(--spacing-md); /* Space below the title */
+    margin-left: -var(--spacing-xs); /* Adjust margin to align with fieldset padding */
+}
+
+
 .form-group {
-    margin-bottom: var(--spacing-md);
+    margin-bottom: 0; /* Removed margin-bottom here as gap in .form-section handles it */
 }
 
 label {
@@ -83,7 +137,7 @@ label {
 }
 
 input[type="number"],
-input[type="text"], /* Add text type if you use it */
+input[type="text"],
 select {
     width: 100%;
     padding: var(--spacing-sm);
@@ -92,30 +146,42 @@ select {
     border-radius: 5px;
     outline: none;
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
-    -webkit-appearance: none; /* Removes default styling on some browsers */
+    -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-    height: 40px; /* Consistent height */
+    height: 40px;
 }
 
 input[type="number"]:focus,
 input[type="text"]:focus,
 select:focus {
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25); /* Subtle focus ring */
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
 /* Specific styling for dynamic fields like jurosParceladoFieldsDiv */
 #jurosParceladoFields {
-    margin-top: var(--spacing-md);
+    margin-top: 0; /* Reset margin-top as gap on form-section handles spacing */
     padding: var(--spacing-md);
     border: 1px dashed var(--border-color);
     border-radius: var(--border-radius);
     background-color: var(--background-light);
+    display: none; /* Hidden by default */
 }
 
 #jurosParceladoFields label {
     margin-top: var(--spacing-sm);
+}
+
+/* New: Placeholder text for dynamic inputs */
+.placeholder-text {
+    text-align: center;
+    color: #999;
+    font-style: italic;
+    padding: var(--spacing-md);
+    border: 1px dashed #ccc;
+    border-radius: 5px;
+    margin: 0; /* Adjust margin if needed, but flex gap should handle it */
 }
 
 
@@ -127,13 +193,19 @@ button {
     border: none;
     cursor: pointer;
     transition: background-color 0.3s ease, transform 0.2s ease;
-    padding: var(--spacing-sm) var(--spacing-lg); /* Added horizontal padding */
-    height: 45px; /* Slightly taller button */
+    padding: var(--spacing-sm) var(--spacing-lg);
+    height: 45px;
+    margin-top: var(--spacing-lg); /* Add margin-top to separate from last form group/fieldset */
+    width: auto; /* Allow button to size based on content, not full width */
+    min-width: 150px; /* Minimum width for the button */
+    display: block; /* Make it a block element to center with margin auto */
+    margin-left: auto;
+    margin-right: auto;
 }
 
 button:hover {
     background-color: var(--primary-dark-color);
-    transform: translateY(-2px); /* Slight lift effect */
+    transform: translateY(-2px);
 }
 
 button:active {
@@ -143,14 +215,14 @@ button:active {
 
 /* Results Section */
 .resultado {
-    margin-top: var(--spacing-lg); /* Use margin-top to separate from form */
+    margin-top: var(--spacing-lg);
     margin-bottom: var(--spacing-lg);
     padding: var(--spacing-lg);
     background: var(--background-result);
     border-radius: var(--border-radius);
-    text-align: left; /* Align text left for better readability */
+    text-align: left;
     box-shadow: 0 4px 6px var(--shadow-light);
-    overflow-x: auto; /* For tables that might exceed width */
+    overflow-x: auto;
 }
 
 .resultado p {
@@ -159,7 +231,7 @@ button:active {
 }
 
 .resultado strong {
-    display: block; /* Make the strong text a block for better spacing */
+    display: block;
     margin-top: var(--spacing-md);
     font-size: 1.1rem;
     color: var(--primary-dark-color);
@@ -182,13 +254,13 @@ button:active {
 .resultado th, .resultado td {
     border: 1px solid var(--border-color);
     padding: var(--spacing-xs) var(--spacing-sm);
-    text-align: right; /* Align numbers to the right */
+    text-align: right;
 }
 
 .resultado th {
     background-color: #e9ecef;
     font-weight: 600;
-    text-align: center; /* Center header text */
+    text-align: center;
 }
 
 .resultado tr:nth-child(even) {
@@ -211,14 +283,30 @@ button:active {
     position: fixed;
     bottom: 0;
     left: 0;
-    box-shadow: 0 -2px 8px var(--shadow-light); /* Shadow above footer */
-    z-index: 100; /* Ensure footer stays on top */
+    box-shadow: 0 -2px 8px var(--shadow-light);
+    z-index: 100;
 }
 
 .footer p {
-    font-size: 0.85rem; /* Slightly smaller font for footer text */
+    font-size: 0.85rem;
     margin: 5px 0;
 }
+
+.footer .social-links {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-sm);
+}
+
+.footer .social-links img {
+    transition: transform 0.2s ease-in-out;
+}
+
+.footer .social-links img:hover {
+    transform: scale(1.1);
+}
+
 
 /* Media Queries for Responsiveness */
 @media (max-width: 768px) {
@@ -229,6 +317,10 @@ button:active {
 
     .header h1 {
         font-size: 1.6rem;
+    }
+
+    .section-title {
+        font-size: 1.2rem;
     }
 
     input, select, button {
@@ -262,33 +354,10 @@ button:active {
     .footer p {
         font-size: 0.8rem;
     }
-}
-
-/* Adicione estes estilos para a seção de taxas */
-.financial-rates-info {
-    margin-top: var(--spacing-md);
-    margin-bottom: var(--spacing-lg);
-    padding: var(--spacing-sm) var(--spacing-lg);
-    background-color: #e6f2ff; /* Um fundo suave para as informações das taxas */
-    border-radius: var(--border-radius);
-    border: 1px solid #cce0ff;
-    text-align: center;
-}
-
-.financial-rates-info p {
-    margin-bottom: var(--spacing-xs);
-    font-size: 1.05rem;
-    color: var(--primary-dark-color);
-}
-
-.financial-rates-info span {
-    font-weight: 700;
-    color: var(--primary-color);
-}
-
-.financial-rates-info small {
-    display: block;
-    font-size: 0.8rem;
-    color: #666;
-    margin-top: var(--spacing-xs);
+    .form-section {
+        padding: var(--spacing-md);
+    }
+    .section-title {
+        font-size: 1.1rem;
+    }
 }
