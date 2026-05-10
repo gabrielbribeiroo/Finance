@@ -96,4 +96,4 @@ The primary objective of TaxCalcBR is to facilitate **informed financial decisio
 ---
 
 ## License
-This project is licensed under the **MIT License**.
+This project is licensed under the [MIT License](LICENSE).
